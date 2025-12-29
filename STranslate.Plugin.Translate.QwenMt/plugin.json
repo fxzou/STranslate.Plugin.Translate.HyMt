@@ -3,7 +3,7 @@
   "Name": "QwenMt",
   "Description": "QwenMt plugin for stranslate",
   "Author": "zggsong",
-  "Version": "1.0.0",
+  "Version": "1.0.1",
   "Website": "https://github.com/STranslate/STranslate.Plugin.Translate.QwenMt",
   "ExecuteFileName": "STranslate.Plugin.Translate.QwenMt.dll",
   "IconPath": "icon.png"
