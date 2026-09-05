@@ -26,6 +26,14 @@
                 ui:ControlHelper.PlaceholderText="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey_Placeholder}" />
         </ui:SettingsCard>
 
+        <ui:SettingsCard Header="腾讯云术语库管理凭证" Description="保存云端术语库需要 SecretId、SecretKey；翻译请求仍使用 HY-MT API Key。">
+            <StackPanel>
+                <TextBox Text="{Binding SecretId, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="SecretId" />
+                <PasswordBox Margin="0,6,0,0" plugin:PasswordBoxAssistant.Attach="True" plugin:PasswordBoxAssistant.Password="{Binding SecretKey}" ui:ControlHelper.PlaceholderText="SecretKey" />
+                <TextBox Margin="0,6,0,0" Text="{Binding Region, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="地域，例如 ap-guangzhou" />
+            </StackPanel>
+        </ui:SettingsCard>
+
         <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Model}">
             <ui:SettingsCard.HeaderIcon>
                 <ui:FontIcon FontFamily="{StaticResource {x:Static ui:ThemeKeys.FluentSystemIconsKey}}" Glyph="&#xF0797;" />

@@ -11,14 +11,14 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http.Json;
-using System.Net.Http.Headers;
+using TencentCloud.Common;
+using TencentCloud.Tokenhub.V20260322;
+using TencentCloud.Tokenhub.V20260322.Models;
 
 namespace STranslate.Plugin.Translate.HyMt.ViewModel;
 
 public partial class SettingsViewModel : ObservableObject, IDisposable
 {
-    private const string GlossaryApiUrl = "https://tokenhub.tencentmaas.com/v1/api/glossaries";
     private static readonly SemaphoreSlim GlossaryRateLimiter = new(1, 1);
     private readonly IPluginContext _context;
     private readonly Settings _settings;
@@ -30,6 +30,9 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         _settings = settings;
 
         ApiKey = settings.ApiKey;
+        SecretId = settings.SecretId;
+        SecretKey = settings.SecretKey;
+        Region = settings.Region;
         Model = settings.Model;
         Models = [.. settings.Models];
         IsEnableTerms = settings.IsEnableTerms;
@@ -136,6 +139,9 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             case nameof(ApiKey):
                 _settings.ApiKey = ApiKey;
                 break;
+            case nameof(SecretId): _settings.SecretId = SecretId; break;
+            case nameof(SecretKey): _settings.SecretKey = SecretKey; break;
+            case nameof(Region): _settings.Region = Region; break;
             case nameof(Model):
                 _settings.Model = Model ?? string.Empty;
                 break;
@@ -298,31 +304,40 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task SaveGlossariesToBackend()
     {
-        if (string.IsNullOrWhiteSpace(ApiKey))
+        if (string.IsNullOrWhiteSpace(SecretId) || string.IsNullOrWhiteSpace(SecretKey))
         {
-            _context.Logger.LogWarning("Cannot save glossary without API key.");
+            _context.Logger.LogWarning("Cannot save glossary without Tencent Cloud SecretId and SecretKey.");
             return;
         }
-
-        var entries = _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)).ToList();
-        var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText))
-            .Select(t => new { source = t.SourceText, target = t.TargetText }).ToArray();
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
-        foreach (var glossary in entries)
+        var client = new TokenhubClient(new Credential(SecretId, SecretKey), Region);
+        var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
+        foreach (var glossary in _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)))
         {
-            await GlossaryRateLimiter.WaitAsync();
-            try
+            var existing = await client.DescribeGlossaryEntries(new DescribeGlossaryEntriesRequest { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
+            if (existing.Entries?.Length > 0)
             {
-                var payload = new { name = glossary.Name, terms };
-                using var response = await client.PutAsJsonAsync($"{GlossaryApiUrl}/{Uri.EscapeDataString(glossary.Id)}", payload);
-                response.EnsureSuccessStatusCode();
+                await Throttled(async () => { await client.DeleteGlossaryEntries(new DeleteGlossaryEntriesRequest
+                {
+                    GlossaryId = glossary.Id,
+                    Entries = existing.Entries.Select(e => new DeleteGlossaryEntryInput { EntryId = e.EntryId }).ToArray()
+                }); });
             }
-            finally
+            foreach (var batch in terms.Chunk(100))
             {
-                _ = Task.Delay(50).ContinueWith(_ => GlossaryRateLimiter.Release());
+                await Throttled(async () => { await client.CreateGlossaryEntries(new CreateGlossaryEntriesRequest
+                {
+                    GlossaryId = glossary.Id,
+                    Entries = batch.Select(t => new GlossaryEntryInput { SourceTerm = t.SourceText, TargetTerm = t.TargetText }).ToArray()
+                }); });
             }
         }
+    }
+
+    private static async Task Throttled(Func<Task> action)
+    {
+        await GlossaryRateLimiter.WaitAsync();
+        try { await action(); }
+        finally { _ = Task.Delay(50).ContinueWith(_ => GlossaryRateLimiter.Release()); }
     }
 
     [RelayCommand]
@@ -418,6 +433,9 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty] public partial string ApiKey { get; set; }
+    [ObservableProperty] public partial string SecretId { get; set; }
+    [ObservableProperty] public partial string SecretKey { get; set; }
+    [ObservableProperty] public partial string Region { get; set; }
 
     [ObservableProperty] public partial string Model { get; set; }
 

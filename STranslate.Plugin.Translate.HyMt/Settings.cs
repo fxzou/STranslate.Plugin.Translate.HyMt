@@ -6,6 +6,12 @@ public class Settings
 {
     public string ApiKey { get; set; } = string.Empty;
 
+    public string SecretId { get; set; } = string.Empty;
+
+    public string SecretKey { get; set; } = string.Empty;
+
+    public string Region { get; set; } = "ap-guangzhou";
+
     public string Model { get; set; } = "hy-mt2-plus";
 
     public List<string> Models { get; set; } =
