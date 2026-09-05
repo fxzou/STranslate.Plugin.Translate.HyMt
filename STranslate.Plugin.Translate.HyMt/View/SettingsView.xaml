@@ -114,13 +114,15 @@
                     </DataGrid>
                 </ui:SettingsCard>
                 <ui:SettingsCard>
-                    <WrapPanel>
-                        <Button Command="{Binding GlossaryExportCommand}" Content="导出术语库" />
-                        <Button Command="{Binding GlossaryImportCommand}" Content="导入术语库" />
-                        <Button Command="{Binding GlossaryAddCommand}" Content="添加术语库" Style="{DynamicResource AccentButtonStyle}" />
-                        <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除术语库" />
-                    </WrapPanel>
-                    <ui:HyperlinkButton Content="术语库管理文档" NavigateUri="https://cloud.tencent.com/document/product/1823/132887" />
+                    <StackPanel>
+                        <WrapPanel>
+                            <Button Command="{Binding GlossaryExportCommand}" Content="导出术语库" />
+                            <Button Command="{Binding GlossaryImportCommand}" Content="导入术语库" />
+                            <Button Command="{Binding GlossaryAddCommand}" Content="添加术语库" Style="{DynamicResource AccentButtonStyle}" />
+                            <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除术语库" />
+                        </WrapPanel>
+                        <ui:HyperlinkButton Content="术语库管理文档" NavigateUri="https://cloud.tencent.com/document/product/1823/132887" />
+                    </StackPanel>
                 </ui:SettingsCard>
                 <ui:SettingsCard Header="术语库内容（QwenMT 格式）" IsEnabled="{Binding IsEnableGlossary}" Padding="2">
                     <DataGrid x:Name="PART_GlossaryTermsGrid" AutoGenerateColumns="False" ItemsSource="{Binding GlossaryTerms}">

@@ -6,11 +6,13 @@ permissions:
   contents: write
 
 on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
   release:
     types: [published]
-  push:
-    tags:
-      - "*" # Push events to matching *, i.e. 1.0, 20.15.10
+
 
 jobs:
   build:
@@ -32,6 +34,14 @@ jobs:
         run: |
           Write-Host "Repo name from github.event.repository.name: $env:REPO_NAME"
           dotnet build ".\$env:REPO_NAME\$env:REPO_NAME.csproj" --configuration Release --no-incremental --force
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: STranslate.Plugin.Translate.HyMt-${{ github.sha }}
+          path: ./.artifacts/plugins/*.spkg
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Release
         uses: softprops/action-gh-release@v2
