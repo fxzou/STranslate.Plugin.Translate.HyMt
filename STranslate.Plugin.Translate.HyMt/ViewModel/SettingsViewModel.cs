@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -65,6 +66,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         {
             item.PropertyChanged += OnGlossaryPropertyChanged;
         }
+        _ = RefreshGlossariesFromBackend();
     }
 
     private void OnTermPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -103,6 +105,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void OnGlossariesCollectionChanged(in NotifyCollectionChangedEventArgs<Glossary> e)
     {
+        if (_isUpdating) return;
         foreach (var item in e.NewItems) item.PropertyChanged += OnGlossaryPropertyChanged;
         foreach (var item in e.OldItems) item.PropertyChanged -= OnGlossaryPropertyChanged;
         SaveGlossaries();
@@ -114,6 +117,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void OnGlossaryTermsCollectionChanged(in NotifyCollectionChangedEventArgs<Term> e)
     {
+        if (_isUpdating) return;
         foreach (var item in e.NewItems) item.PropertyChanged += OnGlossaryTermPropertyChanged;
         foreach (var item in e.OldItems) item.PropertyChanged -= OnGlossaryTermPropertyChanged;
         SaveGlossaryTerms();
@@ -219,7 +223,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void GlossaryAdd() => _glossaryItems.Add(new Glossary { Name = "新术语库" });
+    private void GlossaryAdd() => _glossaryItems.Add(new Glossary { Name = "新术语库", Source = "zh", Target = "en" });
 
     [RelayCommand]
     private void GlossaryDelete(IList list)
@@ -301,10 +305,33 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(SecretId) || string.IsNullOrWhiteSpace(SecretKey)) return;
-            var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
-            foreach (var glossary in _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)))
+            if (string.IsNullOrWhiteSpace(SecretId) || string.IsNullOrWhiteSpace(SecretKey))
             {
+                GlossarySaveStatus = "请先填写腾讯云 SecretId 和 SecretKey。";
+                return;
+            }
+            var glossaries = _glossaryItems.Where(g => g.IsEnabled).ToList();
+            if (glossaries.Count == 0)
+            {
+                GlossarySaveStatus = "请至少添加并启用一个术语库。";
+                return;
+            }
+            GlossarySaveStatus = "正在保存术语库...";
+            var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
+            foreach (var glossary in glossaries)
+            {
+                if (string.IsNullOrWhiteSpace(glossary.Name)) throw new InvalidOperationException("术语库名称不能为空。");
+                if (string.IsNullOrWhiteSpace(glossary.Id))
+                {
+                    var created = await Throttled(() => OpenApiRequest("CreateGlossary", new
+                    {
+                        Name = glossary.Name,
+                        Source = string.IsNullOrWhiteSpace(glossary.Source) ? "zh" : glossary.Source,
+                        Target = string.IsNullOrWhiteSpace(glossary.Target) ? "en" : glossary.Target,
+                        Description = "Created by STranslate HY-MT plugin"
+                    }));
+                    glossary.Id = created?["Response"]?["GlossaryId"]?.ToString() ?? throw new InvalidOperationException("创建术语库后未收到 GlossaryId。");
+                }
                 var existingResponse = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
                 var existing = existingResponse?["Response"]?["Entries"]?.AsArray().Select(x => x?["EntryId"]?.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
                 foreach (var batch in existing.Chunk(100))
@@ -312,8 +339,80 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
                 foreach (var batch in terms.Chunk(100))
                     await Throttled(() => OpenApiRequest("CreateGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(t => new { SourceTerm = t.SourceText, TargetTerm = t.TargetText }) }));
             }
+            SaveGlossaries();
+            GlossarySaveStatus = $"保存成功：已同步 {glossaries.Count} 个术语库、{terms.Count} 条术语。";
         }
-        catch (Exception ex) { Debug.WriteLine($"Failed to save glossaries: {ex}"); }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to save glossaries: {ex}");
+            GlossarySaveStatus = $"保存失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshGlossariesFromBackend()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(SecretId) || string.IsNullOrWhiteSpace(SecretKey))
+            {
+                GlossarySaveStatus = "请先填写腾讯云 SecretId 和 SecretKey。";
+                return;
+            }
+            GlossarySaveStatus = "正在刷新云端术语库...";
+            var response = await OpenApiRequest("DescribeGlossaries", new { Limit = 100, Offset = 0 });
+            var remoteItems = response?["Response"]?["Items"]?.AsArray() ?? [];
+            var enabledIds = _glossaryItems.Where(g => g.IsEnabled).Select(g => g.Id).ToHashSet(StringComparer.Ordinal);
+            using var guard = new UpdateGuard(this);
+            _glossaryItems.Clear();
+            foreach (var item in remoteItems)
+            {
+                var id = item?["GlossaryId"]?.ToString() ?? string.Empty;
+                _glossaryItems.Add(new Glossary
+                {
+                    Id = id,
+                    Name = item?["Name"]?.ToString() ?? id,
+                    Source = item?["Source"]?.ToString() ?? "zh",
+                    Target = item?["Target"]?.ToString() ?? "en",
+                    IsEnabled = enabledIds.Count == 0 || enabledIds.Contains(id)
+                });
+            }
+            SelectedGlossary = _glossaryItems.FirstOrDefault();
+            SaveGlossaries();
+            GlossarySaveStatus = $"刷新成功：云端共有 {_glossaryItems.Count} 个术语库。";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to refresh glossaries: {ex}");
+            GlossarySaveStatus = $"刷新失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshGlossaryTermsFromBackend()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(SelectedGlossary?.Id))
+            {
+                GlossarySaveStatus = "请先在列表中选择一个术语库。";
+                return;
+            }
+            GlossarySaveStatus = "正在刷新术语库内容...";
+            var response = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = SelectedGlossary.Id, Page = 1, PageSize = 10000 });
+            var remoteTerms = response?["Response"]?["Entries"]?.AsArray() ?? [];
+            using var guard = new UpdateGuard(this);
+            _glossaryTerms.Clear();
+            foreach (var item in remoteTerms)
+                _glossaryTerms.Add(new Term { SourceText = item?["SourceTerm"]?.ToString() ?? string.Empty, TargetText = item?["TargetTerm"]?.ToString() ?? string.Empty });
+            SaveGlossaryTerms();
+            GlossarySaveStatus = $"刷新成功：已载入 {_glossaryTerms.Count} 条术语。";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to refresh glossary terms: {ex}");
+            GlossarySaveStatus = $"刷新失败：{ex.Message}";
+        }
     }
 
     private async Task<JsonNode?> OpenApiRequest(string action, object body)
@@ -323,7 +422,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var date = DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var payloadHash = Sha256(payload);
-        var canonicalHeaders = $"content-type:application/json; charset=utf-8\nhost:{OpenApiHost}\n";
+        var canonicalHeaders = $"content-type:application/json\nhost:{OpenApiHost}\n";
         var signedHeaders = "content-type;host";
         var canonicalRequest = $"POST\n/\n\n{canonicalHeaders}\n{signedHeaders}\n{payloadHash}";
         var credentialScope = $"{date}/{OpenApiService}/tc3_request";
@@ -334,7 +433,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         var signature = Convert.ToHexString(Hmac(secretSigning, stringToSign)).ToLowerInvariant();
         var authorization = $"TC3-HMAC-SHA256 Credential={SecretId}/{credentialScope}, SignedHeaders={signedHeaders}, Signature={signature}";
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{OpenApiHost}/");
-        request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+        request.Content = new StringContent(payload, Encoding.UTF8);
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         request.Headers.TryAddWithoutValidation("X-TC-Action", action);
         request.Headers.TryAddWithoutValidation("X-TC-Version", OpenApiVersion);
         request.Headers.TryAddWithoutValidation("X-TC-Region", Region);
@@ -352,6 +452,13 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     private static string Sha256(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     private static byte[] Hmac(string key, string value) => HMACSHA256.HashData(Encoding.UTF8.GetBytes(key), Encoding.UTF8.GetBytes(value));
     private static byte[] Hmac(byte[] key, string value) => HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value));
+
+    private static async Task<T> Throttled<T>(Func<Task<T>> action)
+    {
+        await GlossaryRateLimiter.WaitAsync();
+        try { return await action(); }
+        finally { _ = Task.Delay(50).ContinueWith(_ => GlossaryRateLimiter.Release()); }
+    }
 
     private static async Task Throttled(Func<Task> action)
     {
@@ -471,6 +578,10 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [ObservableProperty] public partial bool IsEnableGlossary { get; set; }
 
     [ObservableProperty] public partial string GlossaryIds { get; set; }
+
+    [ObservableProperty] public partial string GlossarySaveStatus { get; set; } = string.Empty;
+
+    [ObservableProperty] public partial Glossary? SelectedGlossary { get; set; }
 
     /// <summary>
     ///     术语列表

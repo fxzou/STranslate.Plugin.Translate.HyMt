@@ -94,10 +94,12 @@
             <ui:ToggleSwitch IsOn="{Binding IsEnableGlossary}" OffContent="{DynamicResource Off}" OnContent="{DynamicResource On}" />
             <ui:SettingsExpander.Items>
                 <ui:SettingsCard Header="术语库 ID（多个用逗号分隔）" IsEnabled="{Binding IsEnableGlossary}">
-                    <DataGrid x:Name="PART_GlossaryGrid" AutoGenerateColumns="False" ItemsSource="{Binding Glossaries}">
+                    <DataGrid x:Name="PART_GlossaryGrid" AutoGenerateColumns="False" ItemsSource="{Binding Glossaries}" SelectedItem="{Binding SelectedGlossary, Mode=TwoWay}">
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="启用" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" />
                             <DataGridTextColumn Header="名称" Width="*" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="源语言" Width="Auto" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="目标语言" Width="Auto" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" />
                             <DataGridTextColumn Header="术语库 ID" Width="2*" Binding="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
                         </DataGrid.Columns>
                     </DataGrid>
@@ -108,9 +110,11 @@
                             <Button Command="{Binding GlossaryExportCommand}" Content="导出术语库" />
                             <Button Command="{Binding GlossaryImportCommand}" Content="导入术语库" />
                             <Button Command="{Binding GlossaryAddCommand}" Content="添加术语库" Style="{DynamicResource AccentButtonStyle}" />
-                        <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除术语库" />
-                        <Button Command="{Binding SaveGlossariesToBackendCommand}" Content="保存到云端" Style="{DynamicResource AccentButtonStyle}" />
+                            <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除术语库" />
+                            <Button Command="{Binding RefreshGlossariesFromBackendCommand}" Content="刷新云端列表" />
+                            <Button Command="{Binding SaveGlossariesToBackendCommand}" Content="保存到云端" Style="{DynamicResource AccentButtonStyle}" />
                         </WrapPanel>
+                        <TextBlock Margin="0,6,0,0" Text="{Binding GlossarySaveStatus}" TextWrapping="Wrap" />
                         <ui:HyperlinkButton Content="术语库管理文档" NavigateUri="https://cloud.tencent.com/document/product/1823/132887" />
                     </StackPanel>
                 </ui:SettingsCard>
@@ -126,6 +130,7 @@
                     <WrapPanel>
                         <Button Command="{Binding GlossaryTermsImportCommand}" Content="导入术语库内容" />
                         <Button Command="{Binding GlossaryTermsExportCommand}" Content="导出术语库内容" />
+                        <Button Command="{Binding RefreshGlossaryTermsFromBackendCommand}" Content="刷新当前内容" />
                         <Button Command="{Binding GlossaryTermAddCommand}" Content="添加内容" Style="{DynamicResource AccentButtonStyle}" />
                         <Button Command="{Binding GlossaryTermDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryTermsGrid, Path=SelectedItems}" Content="删除选中内容" />
                     </WrapPanel>

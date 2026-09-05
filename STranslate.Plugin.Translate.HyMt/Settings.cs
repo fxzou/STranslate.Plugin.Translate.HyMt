@@ -55,5 +55,7 @@ public partial class Glossary : ObservableObject
 {
     [ObservableProperty] public partial string Name { get; set; } = string.Empty;
     [ObservableProperty] public partial string Id { get; set; } = string.Empty;
+    [ObservableProperty] public partial string Source { get; set; } = "zh";
+    [ObservableProperty] public partial string Target { get; set; } = "en";
     [ObservableProperty] public partial bool IsEnabled { get; set; } = true;
 }
