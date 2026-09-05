@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <RepositoryUrl>https://github.com/fxzou/STranslate.Plugin.Translate.HyMt</RepositoryUrl>
-        <Version>1.21.0</Version>
+        <Version>1.22.0</Version>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
@@ -75,6 +75,7 @@
     </Target>
 
 </Project>
+
 
 
 
