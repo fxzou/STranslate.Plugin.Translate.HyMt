@@ -1,0 +1,10 @@
+﻿{
+  "PluginID": "95ac6db062974bbd8257bb2c2fe3447c",
+  "Name": "HyMt",
+  "Description": "HyMt plugin for stranslate",
+  "Author": "zggsong",
+  "Version": "1.0.1",
+  "Website": "https://github.com/STranslate/STranslate.Plugin.Translate.HyMt",
+  "ExecuteFileName": "STranslate.Plugin.Translate.HyMt.dll",
+  "IconPath": "icon.png"
+}

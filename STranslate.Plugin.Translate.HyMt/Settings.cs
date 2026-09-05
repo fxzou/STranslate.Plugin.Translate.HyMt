@@ -1,0 +1,59 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace STranslate.Plugin.Translate.HyMt;
+
+public class Settings
+{
+    public string ApiKey { get; set; } = string.Empty;
+
+    public string Model { get; set; } = "hy-mt2-plus";
+
+    public List<string> Models { get; set; } =
+    [
+        "hy-mt2-pro",
+        "hy-mt2-plus",
+        "hy-mt2-lite"
+    ];
+
+    public bool IsEnableTerms { get; set; }
+
+    public bool IsEnableDomains { get; set; }
+
+    public bool IsEnableStyle { get; set; }
+
+    public string Style { get; set; } = string.Empty;
+
+    public bool IsEnableGlossary { get; set; }
+
+    /// <summary>HY-MT 持久化术语库 ID，多个 ID 使用逗号、分号或换行分隔。</summary>
+    public string GlossaryIds { get; set; } = string.Empty;
+
+    public List<Glossary> Glossaries { get; set; } = [];
+
+    /// <summary>术语库内容，格式与 QwenMT 术语表一致。</summary>
+    public List<Term> GlossaryTerms { get; set; } = [];
+
+    /// <summary>
+    ///     术语列表
+    /// </summary>
+    public List<Term> Terms { get; set; } = [];
+
+    /// <summary>
+    ///     领域提示
+    /// </summary>
+    public string Domains { get; set; } = string.Empty;
+}
+
+public partial class Term : ObservableObject
+{
+    [ObservableProperty] public partial string SourceText { get; set; } = string.Empty;
+
+    [ObservableProperty] public partial string TargetText { get; set; } = string.Empty;
+}
+
+public partial class Glossary : ObservableObject
+{
+    [ObservableProperty] public partial string Name { get; set; } = string.Empty;
+    [ObservableProperty] public partial string Id { get; set; } = string.Empty;
+    [ObservableProperty] public partial bool IsEnabled { get; set; } = true;
+}

@@ -1,5 +1,5 @@
 <UserControl
-    x:Class="STranslate.Plugin.Translate.QwenMt.View.SettingsView"
+    x:Class="STranslate.Plugin.Translate.HyMt.View.SettingsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -8,14 +8,14 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:plugin="clr-namespace:STranslate.Plugin;assembly=STranslate.Plugin"
     xmlns:ui="http://schemas.inkore.net/lib/ui/wpf/modern"
-    xmlns:vm="clr-namespace:STranslate.Plugin.Translate.QwenMt.ViewModel"
+    xmlns:vm="clr-namespace:STranslate.Plugin.Translate.HyMt.ViewModel"
     d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
 
     <ikw:SimpleStackPanel Spacing="12">
-        <ui:SettingsCard Description="{DynamicResource STranslate_Plugin_Translate_QwenMt_ApiKey_Description}" Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_ApiKey}">
+        <ui:SettingsCard Description="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey_Description}" Header="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey}">
             <ui:SettingsCard.HeaderIcon>
                 <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Key_20_Regular}" />
             </ui:SettingsCard.HeaderIcon>
@@ -23,10 +23,10 @@
                 MinWidth="300"
                 plugin:PasswordBoxAssistant.Attach="True"
                 plugin:PasswordBoxAssistant.Password="{Binding ApiKey}"
-                ui:ControlHelper.PlaceholderText="{DynamicResource STranslate_Plugin_Translate_QwenMt_ApiKey_Placeholder}" />
+                ui:ControlHelper.PlaceholderText="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey_Placeholder}" />
         </ui:SettingsCard>
 
-        <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Model}">
+        <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Model}">
             <ui:SettingsCard.HeaderIcon>
                 <ui:FontIcon FontFamily="{StaticResource {x:Static ui:ThemeKeys.FluentSystemIconsKey}}" Glyph="&#xF0797;" />
             </ui:SettingsCard.HeaderIcon>
@@ -71,7 +71,7 @@
             </ComboBox>
         </ui:SettingsCard>
 
-        <ui:SettingsExpander Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Domains}">
+        <ui:SettingsExpander Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Domains}">
             <ui:SettingsExpander.HeaderIcon>
                 <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.TooltipQuote_20_Regular}" />
             </ui:SettingsExpander.HeaderIcon>
@@ -81,16 +81,67 @@
                 OnContent="{DynamicResource On}" />
 
             <ui:SettingsExpander.Items>
-                <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Domains_Content}" IsEnabled="{Binding IsEnableDomains}">
+                <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Domains_Content}" IsEnabled="{Binding IsEnableDomains}">
                     <TextBox Text="{Binding Domains}" />
                 </ui:SettingsCard>
                 <ui:SettingsCard>
-                    <ui:HyperlinkButton Content="{DynamicResource STranslate_Plugin_Translate_QwenMt_Domains_Website}" NavigateUri="https://help.aliyun.com/zh/model-studio/machine-translation#68bea60b03i3z" />
+                    <ui:HyperlinkButton Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Domains_Website}" NavigateUri="https://cloud.tencent.com/document/product/1823/132252#68bea60b03i3z" />
                 </ui:SettingsCard>
             </ui:SettingsExpander.Items>
         </ui:SettingsExpander>
 
-        <ui:SettingsExpander Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Terms}">
+        <ui:SettingsExpander Header="风格翻译">
+            <ui:SettingsExpander.HeaderIcon><ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Pair_20_Regular}" /></ui:SettingsExpander.HeaderIcon>
+            <ui:ToggleSwitch IsOn="{Binding IsEnableStyle}" OffContent="{DynamicResource Off}" OnContent="{DynamicResource On}" />
+            <ui:SettingsExpander.Items>
+                <ui:SettingsCard Header="目标风格" IsEnabled="{Binding IsEnableStyle}">
+                    <TextBox Text="{Binding Style, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" />
+                </ui:SettingsCard>
+            </ui:SettingsExpander.Items>
+        </ui:SettingsExpander>
+
+        <ui:SettingsExpander Header="HY-MT 术语库">
+            <ui:SettingsExpander.HeaderIcon><ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Pair_20_Regular}" /></ui:SettingsExpander.HeaderIcon>
+            <ui:ToggleSwitch IsOn="{Binding IsEnableGlossary}" OffContent="{DynamicResource Off}" OnContent="{DynamicResource On}" />
+            <ui:SettingsExpander.Items>
+                <ui:SettingsCard Header="术语库 ID（多个用逗号分隔）" IsEnabled="{Binding IsEnableGlossary}">
+                    <DataGrid x:Name="PART_GlossaryGrid" AutoGenerateColumns="False" ItemsSource="{Binding Glossaries}">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="启用" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="名称" Width="*" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="术语库 ID" Width="2*" Binding="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ui:SettingsCard>
+                <ui:SettingsCard>
+                    <WrapPanel>
+                        <Button Command="{Binding GlossaryExportCommand}" Content="导出术语库" />
+                        <Button Command="{Binding GlossaryImportCommand}" Content="导入术语库" />
+                        <Button Command="{Binding GlossaryAddCommand}" Content="添加术语库" Style="{DynamicResource AccentButtonStyle}" />
+                        <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除术语库" />
+                    </WrapPanel>
+                    <ui:HyperlinkButton Content="术语库管理文档" NavigateUri="https://cloud.tencent.com/document/product/1823/132887" />
+                </ui:SettingsCard>
+                <ui:SettingsCard Header="术语库内容（QwenMT 格式）" IsEnabled="{Binding IsEnableGlossary}" Padding="2">
+                    <DataGrid x:Name="PART_GlossaryTermsGrid" AutoGenerateColumns="False" ItemsSource="{Binding GlossaryTerms}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="原始术语" Width="*" Binding="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Header="目标术语" Width="*" Binding="{Binding TargetText, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </ui:SettingsCard>
+                <ui:SettingsCard IsEnabled="{Binding IsEnableGlossary}">
+                    <WrapPanel>
+                        <Button Command="{Binding GlossaryTermsImportCommand}" Content="导入术语库内容" />
+                        <Button Command="{Binding GlossaryTermsExportCommand}" Content="导出术语库内容" />
+                        <Button Command="{Binding GlossaryTermAddCommand}" Content="添加内容" Style="{DynamicResource AccentButtonStyle}" />
+                        <Button Command="{Binding GlossaryTermDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryTermsGrid, Path=SelectedItems}" Content="删除选中内容" />
+                    </WrapPanel>
+                </ui:SettingsCard>
+            </ui:SettingsExpander.Items>
+        </ui:SettingsExpander>
+
+        <ui:SettingsExpander Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Terms}">
             <ui:SettingsExpander.HeaderIcon>
                 <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Pair_20_Regular}" />
             </ui:SettingsExpander.HeaderIcon>
@@ -106,16 +157,16 @@
                         <WrapPanel Orientation="Horizontal">
                             <Button
                                 Command="{Binding TermsExportCommand}"
-                                Content="{DynamicResource STranslate_Plugin_Translate_QwenMt_Terms_Export}"
+                                Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Terms_Export}"
                                 IsEnabled="{Binding IsEnableTerms}" />
                             <Button
                                 Command="{Binding TermsImportCommand}"
-                                Content="{DynamicResource STranslate_Plugin_Translate_QwenMt_Terms_Import}"
+                                Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Terms_Import}"
                                 IsEnabled="{Binding IsEnableTerms}" />
                             <Button
                                 Margin="20,0,0,0"
                                 Command="{Binding TermsClearCommand}"
-                                Content="{DynamicResource STranslate_Plugin_Translate_QwenMt_Terms_Clear}"
+                                Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Terms_Clear}"
                                 IsEnabled="{Binding IsEnableTerms}" />
                         </WrapPanel>
                     </ui:SettingsCard.Header>
@@ -130,11 +181,11 @@
                                 <DataGridTextColumn
                                     Width="*"
                                     Binding="{Binding SourceText}"
-                                    Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Term_Source}" />
+                                    Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Term_Source}" />
                                 <DataGridTextColumn
                                     Width="*"
                                     Binding="{Binding TargetText}"
-                                    Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Term_Target}" />
+                                    Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Term_Target}" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </ui:SettingsCard.Header>
@@ -144,27 +195,27 @@
                         <WrapPanel Orientation="Horizontal">
                             <Button
                                 Command="{Binding TermsAddCommand}"
-                                Content="{DynamicResource STranslate_Plugin_Translate_QwenMt_Term_Add}"
+                                Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Term_Add}"
                                 Style="{DynamicResource AccentButtonStyle}" />
                             <Button
                                 Command="{Binding TermsDeleteCommand}"
                                 CommandParameter="{Binding ElementName=PART_DataGrid, Path=SelectedItems}"
-                                Content="{DynamicResource STranslate_Plugin_Translate_QwenMt_Term_Delete}" />
+                                Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Term_Delete}" />
                         </WrapPanel>
                     </ui:SettingsCard.Header>
                 </ui:SettingsCard>
             </ui:SettingsExpander.Items>
         </ui:SettingsExpander>
 
-        <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_QwenMt_Support}">
+        <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Support}">
             <ui:SettingsCard.HeaderIcon>
                 <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.PersonSupport_20_Regular}" />
             </ui:SettingsCard.HeaderIcon>
-            <ui:HyperlinkButton NavigateUri="https://help.aliyun.com/zh/model-studio/machine-translation">
+            <ui:HyperlinkButton NavigateUri="https://cloud.tencent.com/document/product/1823/132252">
                 <TextBlock
-                    Text="https://help.aliyun.com/zh/model-studio/machine-translation"
+                    Text="https://cloud.tencent.com/document/product/1823/132252"
                     TextTrimming="CharacterEllipsis"
-                    ToolTip="https://help.aliyun.com/zh/model-studio/machine-translation" />
+                    ToolTip="https://cloud.tencent.com/document/product/1823/132252" />
             </ui:HyperlinkButton>
         </ui:SettingsCard>
     </ikw:SimpleStackPanel>

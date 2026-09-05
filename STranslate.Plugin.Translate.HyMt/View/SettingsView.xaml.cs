@@ -1,4 +1,4 @@
-namespace STranslate.Plugin.Translate.QwenMt.View;
+namespace STranslate.Plugin.Translate.HyMt.View;
 
 public partial class SettingsView
 {

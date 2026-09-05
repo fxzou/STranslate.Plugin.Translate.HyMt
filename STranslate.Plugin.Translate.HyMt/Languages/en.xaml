@@ -1,0 +1,23 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_ApiKey">API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_ApiKey_Placeholder">Please enter API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_ApiKey_Description">Enter your HyMt API Key</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Model">Model</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Domains">Domain</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Domains_Content">Domain Hint</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Domains_Website">Domain Prompt Official Documentation</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms">Terms</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms_Clear">Clear Terms</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms_Export">Export Terms</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms_Import">Import Terms</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Term_Add">Add Term</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Term_Delete">Delete Term</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Term_Source">Source Term</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Term_Target">Target Term</sys:String>
+    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Support">Support</sys:String>
+
+</ResourceDictionary>

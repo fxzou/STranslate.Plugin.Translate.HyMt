@@ -11,7 +11,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 
-namespace STranslate.Plugin.Translate.QwenMt.ViewModel;
+namespace STranslate.Plugin.Translate.HyMt.ViewModel;
 
 public partial class SettingsViewModel : ObservableObject, IDisposable
 {
@@ -30,16 +30,31 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         IsEnableTerms = settings.IsEnableTerms;
         IsEnableDomains = settings.IsEnableDomains;
         Domains = settings.Domains;
+        IsEnableStyle = settings.IsEnableStyle;
+        Style = settings.Style;
+        IsEnableGlossary = settings.IsEnableGlossary;
+        GlossaryIds = settings.GlossaryIds;
+        _glossaryItems = [.. settings.Glossaries];
+        Glossaries = _glossaryItems.ToNotifyCollectionChanged();
         _items = [.. settings.Terms];
         Terms = _items.ToNotifyCollectionChanged();
+        _glossaryTerms = [.. settings.GlossaryTerms];
+        GlossaryTerms = _glossaryTerms.ToNotifyCollectionChanged();
 
         PropertyChanged += OnPropertyChanged;
         Models.CollectionChanged += OnModelsCollectionChanged;
         _items.CollectionChanged += OnTermsCollectionChanged;
+        _glossaryTerms.CollectionChanged += OnGlossaryTermsCollectionChanged;
+        _glossaryItems.CollectionChanged += OnGlossariesCollectionChanged;
 
         foreach (var item in _items)
         {
             item.PropertyChanged += OnTermPropertyChanged;
+        }
+        foreach (var item in _glossaryTerms) item.PropertyChanged += OnGlossaryTermPropertyChanged;
+        foreach (var item in _glossaryItems)
+        {
+            item.PropertyChanged += OnGlossaryPropertyChanged;
         }
     }
 
@@ -77,6 +92,38 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnGlossariesCollectionChanged(in NotifyCollectionChangedEventArgs<Glossary> e)
+    {
+        foreach (var item in e.NewItems) item.PropertyChanged += OnGlossaryPropertyChanged;
+        foreach (var item in e.OldItems) item.PropertyChanged -= OnGlossaryPropertyChanged;
+        SaveGlossaries();
+    }
+
+    private void OnGlossaryPropertyChanged(object? sender, PropertyChangedEventArgs e) => SaveGlossaries();
+
+    private void OnGlossaryTermPropertyChanged(object? sender, PropertyChangedEventArgs e) => SaveGlossaryTerms();
+
+    private void OnGlossaryTermsCollectionChanged(in NotifyCollectionChangedEventArgs<Term> e)
+    {
+        foreach (var item in e.NewItems) item.PropertyChanged += OnGlossaryTermPropertyChanged;
+        foreach (var item in e.OldItems) item.PropertyChanged -= OnGlossaryTermPropertyChanged;
+        SaveGlossaryTerms();
+    }
+
+    private void SaveGlossaryTerms()
+    {
+        _settings.GlossaryTerms = [.. _glossaryTerms];
+        _context.SaveSettingStorage<Settings>();
+    }
+
+    private void SaveGlossaries()
+    {
+        _settings.Glossaries = [.. _glossaryItems];
+        _settings.GlossaryIds = string.Join(",", _glossaryItems.Where(g => g.IsEnabled && !string.IsNullOrWhiteSpace(g.Id)).Select(g => g.Id));
+        GlossaryIds = _settings.GlossaryIds;
+        _context.SaveSettingStorage<Settings>();
+    }
+
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
@@ -96,6 +143,10 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             case nameof(Domains):
                 _settings.Domains = Domains;
                 break;
+            case nameof(IsEnableStyle): _settings.IsEnableStyle = IsEnableStyle; break;
+            case nameof(Style): _settings.Style = Style; break;
+            case nameof(IsEnableGlossary): _settings.IsEnableGlossary = IsEnableGlossary; break;
+            case nameof(GlossaryIds): _settings.GlossaryIds = GlossaryIds; break;
             default:
                 return;
         }
@@ -162,6 +213,84 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void GlossaryAdd() => _glossaryItems.Add(new Glossary { Name = "新术语库" });
+
+    [RelayCommand]
+    private void GlossaryDelete(IList list)
+    {
+        foreach (var item in list.Cast<Glossary>().ToList()) _glossaryItems.Remove(item);
+    }
+
+    [RelayCommand]
+    private void GlossaryExport()
+    {
+        try
+        {
+            var dialog = new SaveFileDialog
+            {
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                FileName = "hymt_glossaries.json",
+                DefaultExt = "json"
+            };
+            if (dialog.ShowDialog() != true) return;
+            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_glossaryItems, options), Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            _context.Logger.LogError(ex, $"Failed to export glossaries: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void GlossaryImport()
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                Multiselect = false
+            };
+            if (dialog.ShowDialog() != true) return;
+            var imported = JsonSerializer.Deserialize<IEnumerable<Glossary>>(File.ReadAllText(dialog.FileName, Encoding.UTF8));
+            if (imported == null) return;
+            _glossaryItems.Clear();
+            _glossaryItems.AddRange(imported);
+        }
+        catch (Exception ex)
+        {
+            _context.Logger.LogError(ex, $"Failed to import glossaries: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void GlossaryTermAdd() => _glossaryTerms.Add(new Term());
+
+    [RelayCommand]
+    private void GlossaryTermDelete(IList list)
+    {
+        foreach (var item in list.Cast<Term>().ToList()) _glossaryTerms.Remove(item);
+    }
+
+    [RelayCommand]
+    private void GlossaryTermsExport()
+    {
+        var dialog = new SaveFileDialog { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*", FileName = "hymt_glossary_terms.json", DefaultExt = "json" };
+        if (dialog.ShowDialog() == true) File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_glossaryTerms, options), Encoding.UTF8);
+    }
+
+    [RelayCommand]
+    private void GlossaryTermsImport()
+    {
+        var dialog = new OpenFileDialog { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*", Multiselect = false };
+        if (dialog.ShowDialog() != true) return;
+        var imported = JsonSerializer.Deserialize<IEnumerable<Term>>(File.ReadAllText(dialog.FileName, Encoding.UTF8));
+        if (imported == null) return;
+        _glossaryTerms.Clear();
+        _glossaryTerms.AddRange(imported);
+    }
+
+    [RelayCommand]
     private void TermsExport()
     {
         try
@@ -169,7 +298,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             var saveFileDialog = new SaveFileDialog
             {
                 Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                FileName = "qwen_terms.json",
+                FileName = "hymt_terms.json",
                 DefaultExt = "json"
             };
 
@@ -220,10 +349,17 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         PropertyChanged -= OnPropertyChanged;
         Models.CollectionChanged -= OnModelsCollectionChanged;
         _items.CollectionChanged -= OnTermsCollectionChanged;
+        _glossaryTerms.CollectionChanged -= OnGlossaryTermsCollectionChanged;
+        _glossaryItems.CollectionChanged -= OnGlossariesCollectionChanged;
 
         foreach (var item in _items)
         {
             item.PropertyChanged -= OnTermPropertyChanged;
+        }
+        foreach (var item in _glossaryTerms) item.PropertyChanged -= OnGlossaryTermPropertyChanged;
+        foreach (var item in _glossaryItems)
+        {
+            item.PropertyChanged -= OnGlossaryPropertyChanged;
         }
     }
 
@@ -257,12 +393,28 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] public partial bool IsEnableDomains { get; set; }
 
+    [ObservableProperty] public partial bool IsEnableStyle { get; set; }
+
+    [ObservableProperty] public partial string Style { get; set; }
+
+    [ObservableProperty] public partial bool IsEnableGlossary { get; set; }
+
+    [ObservableProperty] public partial string GlossaryIds { get; set; }
+
     /// <summary>
     ///     术语列表
     /// </summary>
     private readonly ObservableList<Term> _items;
 
+    private readonly ObservableList<Glossary> _glossaryItems;
+
+    private readonly ObservableList<Term> _glossaryTerms;
+
     public INotifyCollectionChangedSynchronizedViewList<Term> Terms { get; }
+
+    public INotifyCollectionChangedSynchronizedViewList<Glossary> Glossaries { get; }
+
+    public INotifyCollectionChangedSynchronizedViewList<Term> GlossaryTerms { get; }
 
     /// <summary>
     ///     领域提示
