@@ -28,6 +28,12 @@ public class Settings
 
     public string Style { get; set; } = string.Empty;
 
+    /// <summary>源语言为中文时使用的风格要求。</summary>
+    public string ChineseSourceStyle { get; set; } = string.Empty;
+
+    /// <summary>目标语言为中文时使用的风格要求。</summary>
+    public string ChineseTargetStyle { get; set; } = string.Empty;
+
     public bool IsEnableGlossary { get; set; }
 
     /// <summary>HY-MT 持久化术语库 ID，多个 ID 使用逗号、分号或换行分隔。</summary>

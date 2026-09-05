@@ -43,6 +43,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         IsEnableTerms = settings.IsEnableTerms;
         IsEnableStyle = settings.IsEnableStyle;
         Style = settings.Style;
+        ChineseSourceStyle = settings.ChineseSourceStyle;
+        ChineseTargetStyle = settings.ChineseTargetStyle;
         IsEnableGlossary = settings.IsEnableGlossary;
         GlossaryIds = settings.GlossaryIds;
         _glossaryItems = [.. settings.Glossaries];
@@ -169,6 +171,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
                 break;
             case nameof(IsEnableStyle): _settings.IsEnableStyle = IsEnableStyle; break;
             case nameof(Style): _settings.Style = Style; break;
+            case nameof(ChineseSourceStyle): _settings.ChineseSourceStyle = ChineseSourceStyle; break;
+            case nameof(ChineseTargetStyle): _settings.ChineseTargetStyle = ChineseTargetStyle; break;
             case nameof(IsEnableGlossary): _settings.IsEnableGlossary = IsEnableGlossary; break;
             case nameof(GlossaryIds): _settings.GlossaryIds = GlossaryIds; break;
             default:
@@ -659,6 +663,10 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [ObservableProperty] public partial bool IsEnableStyle { get; set; }
 
     [ObservableProperty] public partial string Style { get; set; }
+
+    [ObservableProperty] public partial string ChineseSourceStyle { get; set; }
+
+    [ObservableProperty] public partial string ChineseTargetStyle { get; set; }
 
     [ObservableProperty] public partial bool IsEnableGlossary { get; set; }
 

@@ -91,6 +91,7 @@ public class Main : TranslatePluginBase
         }
 
         var model = string.IsNullOrWhiteSpace(Settings.Model) ? "hy-mt2-plus" : Settings.Model.Trim();
+        var style = Settings.IsEnableStyle ? SelectStyle(sourceStr, targetStr) : string.Empty;
 
         var options = new Options
         {
@@ -117,7 +118,7 @@ public class Main : TranslatePluginBase
         {
             url = TranslationUrl;
             var contextParts = new List<string>();
-            if (Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style)) contextParts.Add($"译文风格：{Settings.Style}");
+            if (!string.IsNullOrWhiteSpace(style)) contextParts.Add($"译文风格：{style}");
             if (Settings.IsEnableTerms)
             {
                 var localTerms = Settings.Terms
@@ -142,7 +143,7 @@ public class Main : TranslatePluginBase
         {
             url = ChatUrl;
             var prompt = $"请将以下文本翻译为 {targetStr}。注意只需要输出翻译后的结果，不要额外解释：\n";
-            if (Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style)) prompt = $"请将以下文本翻译为 {targetStr}。注意翻译的风格要严格符合【{Settings.Style}】\n";
+            if (!string.IsNullOrWhiteSpace(style)) prompt = $"请将以下文本翻译为 {targetStr}。注意翻译的风格要严格符合【{style}】\n";
             if (Settings.IsEnableTerms) prompt = string.Join("\n", Settings.Terms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText)).Select(t => $"{t.SourceText} 翻译成 {t.TargetText}")) + "\n" + prompt;
             content = new { model, messages = new[] { new { role = "user", content = prompt + request.Text } } };
         }
@@ -154,4 +155,15 @@ public class Main : TranslatePluginBase
 
         result.Success(data);
     }
+
+    private string SelectStyle(string sourceLanguage, string targetLanguage)
+    {
+        if (IsChinese(sourceLanguage) && !string.IsNullOrWhiteSpace(Settings.ChineseSourceStyle))
+            return Settings.ChineseSourceStyle.Trim();
+        if (IsChinese(targetLanguage) && !string.IsNullOrWhiteSpace(Settings.ChineseTargetStyle))
+            return Settings.ChineseTargetStyle.Trim();
+        return Settings.Style.Trim();
+    }
+
+    private static bool IsChinese(string language) => language is "zh" or "zh-TR" or "yue" or "Cantonese";
 }

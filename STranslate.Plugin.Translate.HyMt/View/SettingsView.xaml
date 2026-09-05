@@ -83,8 +83,15 @@
             <ui:SettingsExpander.HeaderIcon><ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Pair_20_Regular}" /></ui:SettingsExpander.HeaderIcon>
             <ui:ToggleSwitch IsOn="{Binding IsEnableStyle}" OffContent="{DynamicResource Off}" OnContent="{DynamicResource On}" />
             <ui:SettingsExpander.Items>
-                <ui:SettingsCard Header="目标风格" IsEnabled="{Binding IsEnableStyle}">
-                    <TextBox Text="{Binding Style, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" />
+                <ui:SettingsCard Header="翻译风格" IsEnabled="{Binding IsEnableStyle}">
+                    <StackPanel>
+                        <TextBlock Text="源语言为中文" />
+                        <TextBox Margin="0,4,0,8" Text="{Binding ChineseSourceStyle, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" />
+                        <TextBlock Text="目标语言为中文" />
+                        <TextBox Margin="0,4,0,8" Text="{Binding ChineseTargetStyle, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" />
+                        <TextBlock Text="其他情况" />
+                        <TextBox Margin="0,4,0,0" Text="{Binding Style, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" />
+                    </StackPanel>
                 </ui:SettingsCard>
             </ui:SettingsExpander.Items>
         </ui:SettingsExpander>
