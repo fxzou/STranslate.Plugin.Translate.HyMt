@@ -3,7 +3,7 @@
   "Name": "HY-MT 翻译",
   "Description": "腾讯混元 HY-MT 多语言翻译插件，支持风格翻译、本地术语表和云端术语库。",
   "Author": "fxzou",
-  "Version": "1.20.0",
+  "Version": "1.21.0",
   "Website": "https://github.com/STranslate/STranslate.Plugin.Translate.HyMt",
   "ExecuteFileName": "STranslate.Plugin.Translate.HyMt.dll",
   "IconPath": "icon.png"
