@@ -15,7 +15,7 @@
     mc:Ignorable="d">
 
     <ikw:SimpleStackPanel Spacing="12">
-        <ui:SettingsCard Description="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey_Description}" Header="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey}">
+        <ui:SettingsCard Description="HY-MT API Key（翻译与术语库共用）" Header="{DynamicResource STranslate_Plugin_Translate_HyMt_ApiKey}">
             <ui:SettingsCard.HeaderIcon>
                 <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Key_20_Regular}" />
             </ui:SettingsCard.HeaderIcon>
