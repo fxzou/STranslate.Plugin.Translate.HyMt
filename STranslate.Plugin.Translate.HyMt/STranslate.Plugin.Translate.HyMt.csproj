@@ -61,7 +61,6 @@
         <PackageReference Include="STranslate.Plugin" Version="1.0.3">
             <Private>false</Private>
         </PackageReference>
-        <PackageReference Include="TencentCloudSDK.Tokenhub" Version="3.0.1500" />
     </ItemGroup>
 
 </Project>

@@ -57,9 +57,8 @@ jobs:
         run: |
           Write-Host "Repo name from github.event.repository.name: $env:REPO_NAME"
           dotnet build ".\$env:REPO_NAME\$env:REPO_NAME.csproj" --configuration Release --no-incremental --force
-          $deps = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "TencentCloudTokenhub.dll" -ErrorAction SilentlyContinue
-          if (-not $deps) { throw "TencentCloudTokenhub.dll was not included in the build/package output." }
-          Write-Host "Tokenhub dependency: $($deps.FullName)"
+          $sdkDll = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "TencentCloudTokenhub.dll" -ErrorAction SilentlyContinue
+          if ($sdkDll) { throw "TencentCloudTokenhub.dll must not be bundled; the plugin uses the pure HTTP TC3 implementation." }
           $hostDll = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "STranslate.Plugin.dll" -ErrorAction SilentlyContinue
           if ($hostDll) { throw "STranslate.Plugin.dll must not be bundled in the plugin package: $($hostDll.FullName)" }
 

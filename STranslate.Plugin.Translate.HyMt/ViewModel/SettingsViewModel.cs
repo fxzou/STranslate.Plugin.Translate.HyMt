@@ -11,14 +11,16 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using TencentCloud.Common;
-using TencentCloud.Tokenhub.V20260322;
-using TencentCloud.Tokenhub.V20260322.Models;
+using System.Globalization;
+using System.Security.Cryptography;
 
 namespace STranslate.Plugin.Translate.HyMt.ViewModel;
 
 public partial class SettingsViewModel : ObservableObject, IDisposable
 {
+    private const string OpenApiHost = "tokenhub.tencentcloudapi.com";
+    private const string OpenApiService = "tokenhub";
+    private const string OpenApiVersion = "2026-03-22";
     private static readonly SemaphoreSlim GlossaryRateLimiter = new(1, 1);
     private readonly IPluginContext _context;
     private readonly Settings _settings;
@@ -309,30 +311,58 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             _context.Logger.LogWarning("Cannot save glossary without Tencent Cloud SecretId and SecretKey.");
             return;
         }
-        var credential = new Credential { SecretId = SecretId, SecretKey = SecretKey };
-        var client = new TokenhubClient(credential, Region);
         var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
         foreach (var glossary in _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)))
         {
-            var existing = await client.DescribeGlossaryEntries(new DescribeGlossaryEntriesRequest { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
-            if (existing.Entries?.Length > 0)
+            var existingResponse = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
+            var existing = existingResponse?["Response"]?["Entries"]?.AsArray().Select(x => x?["EntryId"]?.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
+            foreach (var batch in existing.Chunk(100))
             {
-                await Throttled(async () => { await client.DeleteGlossaryEntries(new DeleteGlossaryEntriesRequest
-                {
-                    GlossaryId = glossary.Id,
-                    Entries = existing.Entries.Select(e => new DeleteGlossaryEntryInput { EntryId = e.EntryId }).ToArray()
-                }); });
+                await Throttled(() => OpenApiRequest("DeleteGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(EntryId => new { EntryId }) }));
             }
             foreach (var batch in terms.Chunk(100))
             {
-                await Throttled(async () => { await client.CreateGlossaryEntries(new CreateGlossaryEntriesRequest
-                {
-                    GlossaryId = glossary.Id,
-                    Entries = batch.Select(t => new GlossaryEntryInput { SourceTerm = t.SourceText, TargetTerm = t.TargetText }).ToArray()
-                }); });
+                await Throttled(() => OpenApiRequest("CreateGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(t => new { SourceTerm = t.SourceText, TargetTerm = t.TargetText }) }));
             }
         }
     }
+
+    private async Task<JsonNode?> OpenApiRequest(string action, object body)
+    {
+        using var client = new HttpClient();
+        var payload = JsonSerializer.Serialize(body, options);
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var date = DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var payloadHash = Sha256(payload);
+        var canonicalHeaders = $"content-type:application/json; charset=utf-8\nhost:{OpenApiHost}\n";
+        var signedHeaders = "content-type;host";
+        var canonicalRequest = $"POST\n/\n\n{canonicalHeaders}\n{signedHeaders}\n{payloadHash}";
+        var credentialScope = $"{date}/{OpenApiService}/tc3_request";
+        var stringToSign = $"TC3-HMAC-SHA256\n{timestamp}\n{credentialScope}\n{Sha256(canonicalRequest)}";
+        var secretDate = Hmac($"TC3{SecretKey}", date);
+        var secretService = Hmac(secretDate, OpenApiService);
+        var secretSigning = Hmac(secretService, "tc3_request");
+        var signature = Convert.ToHexString(Hmac(secretSigning, stringToSign)).ToLowerInvariant();
+        var authorization = $"TC3-HMAC-SHA256 Credential={SecretId}/{credentialScope}, SignedHeaders={signedHeaders}, Signature={signature}";
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{OpenApiHost}/");
+        request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+        request.Headers.TryAddWithoutValidation("X-TC-Action", action);
+        request.Headers.TryAddWithoutValidation("X-TC-Version", OpenApiVersion);
+        request.Headers.TryAddWithoutValidation("X-TC-Region", Region);
+        request.Headers.TryAddWithoutValidation("X-TC-Timestamp", timestamp.ToString(CultureInfo.InvariantCulture));
+        request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        var response = await client.SendAsync(request);
+        var text = await response.Content.ReadAsStringAsync();
+        response.EnsureSuccessStatusCode();
+        var json = JsonNode.Parse(text);
+        var error = json?["Response"]?["Error"];
+        if (error != null) throw new InvalidOperationException($"{error["Code"]}: {error["Message"]}");
+        return json;
+    }
+
+    private static string Sha256(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+    private static byte[] Hmac(string key, string value) => HMACSHA256.HashData(Encoding.UTF8.GetBytes(key), Encoding.UTF8.GetBytes(value));
+    private static byte[] Hmac(byte[] key, string value) => HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value));
 
     private static async Task Throttled(Func<Task> action)
     {
