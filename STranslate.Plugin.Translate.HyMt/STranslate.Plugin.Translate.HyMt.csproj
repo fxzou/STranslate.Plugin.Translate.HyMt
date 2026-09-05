@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <RepositoryUrl>https://github.com/fxzou/STranslate.Plugin.Translate.HyMt</RepositoryUrl>
+        <Version>1.1.0</Version>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
 
         <TargetFramework>net10.0-windows</TargetFramework>
