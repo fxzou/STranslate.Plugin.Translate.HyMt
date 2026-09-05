@@ -118,7 +118,10 @@ public class Main : TranslatePluginBase
                 .Select(t => (object)new { source = t.SourceText, target = t.TargetText })
                 .Take(10)
                 .ToArray();
-            var context = Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style) ? $"译文风格：{Settings.Style}" : null;
+            var contextParts = new List<string>();
+            if (Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style)) contextParts.Add($"译文风格：{Settings.Style}");
+            if (Settings.IsEnableDomains && !string.IsNullOrWhiteSpace(Settings.Domains)) contextParts.Add($"翻译领域：{Settings.Domains}");
+            var context = contextParts.Count == 0 ? null : string.Join("\n", contextParts);
             content = new { model, text = request.Text, source = sourceStr == "auto" ? null : sourceStr, target = targetStr, glossary_ids = glossaryIds, references = localTerms, context };
         }
         else

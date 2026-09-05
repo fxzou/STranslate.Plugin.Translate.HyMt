@@ -10,11 +10,15 @@ using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Net.Http.Json;
+using System.Net.Http.Headers;
 
 namespace STranslate.Plugin.Translate.HyMt.ViewModel;
 
 public partial class SettingsViewModel : ObservableObject, IDisposable
 {
+    private const string GlossaryApiUrl = "https://tokenhub.tencentmaas.com/v1/api/glossaries";
+    private static readonly SemaphoreSlim GlossaryRateLimiter = new(1, 1);
     private readonly IPluginContext _context;
     private readonly Settings _settings;
     private bool _isUpdating = false;
@@ -288,6 +292,36 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         if (imported == null) return;
         _glossaryTerms.Clear();
         _glossaryTerms.AddRange(imported);
+    }
+
+    [RelayCommand]
+    private async Task SaveGlossariesToBackend()
+    {
+        if (string.IsNullOrWhiteSpace(ApiKey))
+        {
+            _context.Logger.LogWarning("Cannot save glossary without API key.");
+            return;
+        }
+
+        var entries = _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)).ToList();
+        var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText))
+            .Select(t => new { source = t.SourceText, target = t.TargetText }).ToArray();
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ApiKey);
+        foreach (var glossary in entries)
+        {
+            await GlossaryRateLimiter.WaitAsync();
+            try
+            {
+                var payload = new { name = glossary.Name, terms };
+                using var response = await client.PutAsJsonAsync($"{GlossaryApiUrl}/{Uri.EscapeDataString(glossary.Id)}", payload);
+                response.EnsureSuccessStatusCode();
+            }
+            finally
+            {
+                _ = Task.Delay(50).ContinueWith(_ => GlossaryRateLimiter.Release());
+            }
+        }
     }
 
     [RelayCommand]
