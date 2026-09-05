@@ -36,8 +36,10 @@ jobs:
           $plugin = ".\STranslate.Plugin.Translate.HyMt\plugin.json"
           $project = ".\STranslate.Plugin.Translate.HyMt\STranslate.Plugin.Translate.HyMt.csproj"
           $data = Get-Content $plugin -Raw | ConvertFrom-Json
-          $old = [decimal]$data.Version
-          $new = ($old + 0.01).ToString("0.00", [Globalization.CultureInfo]::InvariantCulture)
+          if ($data.Version -notmatch '^(\d+)\.(\d+)(?:\.\d+)?$') { throw "Invalid plugin version: $($data.Version)" }
+          $old = [decimal]::Parse("$($Matches[1]).$($Matches[2])", [Globalization.CultureInfo]::InvariantCulture)
+          $newNumber = ($old + 0.01).ToString("0.00", [Globalization.CultureInfo]::InvariantCulture)
+          $new = "$newNumber.0"
           $data.Version = $new
           $data | ConvertTo-Json -Depth 10 | Set-Content $plugin -Encoding utf8
           (Get-Content $project -Raw) -replace '<Version>[^<]+</Version>', "<Version>$new</Version>" | Set-Content $project -Encoding utf8
