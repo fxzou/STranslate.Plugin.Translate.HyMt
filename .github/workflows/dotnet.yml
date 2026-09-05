@@ -57,6 +57,9 @@ jobs:
         run: |
           Write-Host "Repo name from github.event.repository.name: $env:REPO_NAME"
           dotnet build ".\$env:REPO_NAME\$env:REPO_NAME.csproj" --configuration Release --no-incremental --force
+          $deps = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "TencentCloudTokenhub.dll" -ErrorAction SilentlyContinue
+          if (-not $deps) { throw "TencentCloudTokenhub.dll was not included in the build/package output." }
+          Write-Host "Tokenhub dependency: $($deps.FullName)"
 
       - name: Upload CI artifact
         uses: actions/upload-artifact@v4
