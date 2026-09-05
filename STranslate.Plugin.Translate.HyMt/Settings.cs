@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace STranslate.Plugin.Translate.HyMt;
 
@@ -34,9 +35,6 @@ public class Settings
 
     public List<Glossary> Glossaries { get; set; } = [];
 
-    /// <summary>术语库内容，格式与 QwenMT 术语表一致。</summary>
-    public List<Term> GlossaryTerms { get; set; } = [];
-
     /// <summary>
     ///     术语列表
     /// </summary>
@@ -46,6 +44,8 @@ public class Settings
 
 public partial class Term : ObservableObject
 {
+    [JsonIgnore]
+    [ObservableProperty] public partial string EntryId { get; set; } = string.Empty;
     [ObservableProperty] public partial string SourceText { get; set; } = string.Empty;
 
     [ObservableProperty] public partial string TargetText { get; set; } = string.Empty;
@@ -58,4 +58,6 @@ public partial class Glossary : ObservableObject
     [ObservableProperty] public partial string Source { get; set; } = "zh";
     [ObservableProperty] public partial string Target { get; set; } = "en";
     [ObservableProperty] public partial bool IsEnabled { get; set; } = true;
+
+    public List<Term> Terms { get; set; } = [];
 }

@@ -26,7 +26,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     private static readonly SemaphoreSlim GlossaryRateLimiter = new(1, 1);
     private readonly IPluginContext _context;
     private readonly Settings _settings;
-    private bool _isUpdating = false;
+    private int _updateDepth;
+    private bool IsUpdating => _updateDepth > 0;
 
     public SettingsViewModel(IPluginContext context, Settings settings)
     {
@@ -48,7 +49,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         Glossaries = _glossaryItems.ToNotifyCollectionChanged();
         _items = [.. settings.Terms];
         Terms = _items.ToNotifyCollectionChanged();
-        _glossaryTerms = [.. settings.GlossaryTerms];
+        _glossaryTerms = [];
         GlossaryTerms = _glossaryTerms.ToNotifyCollectionChanged();
 
         PropertyChanged += OnPropertyChanged;
@@ -61,11 +62,11 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         {
             item.PropertyChanged += OnTermPropertyChanged;
         }
-        foreach (var item in _glossaryTerms) item.PropertyChanged += OnGlossaryTermPropertyChanged;
         foreach (var item in _glossaryItems)
         {
             item.PropertyChanged += OnGlossaryPropertyChanged;
         }
+        SelectedGlossary = _glossaryItems.FirstOrDefault();
         _ = RefreshGlossariesFromBackend();
     }
 
@@ -105,9 +106,9 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void OnGlossariesCollectionChanged(in NotifyCollectionChangedEventArgs<Glossary> e)
     {
-        if (_isUpdating) return;
         foreach (var item in e.NewItems) item.PropertyChanged += OnGlossaryPropertyChanged;
         foreach (var item in e.OldItems) item.PropertyChanged -= OnGlossaryPropertyChanged;
+        if (IsUpdating) return;
         SaveGlossaries();
     }
 
@@ -117,16 +118,29 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     private void OnGlossaryTermsCollectionChanged(in NotifyCollectionChangedEventArgs<Term> e)
     {
-        if (_isUpdating) return;
         foreach (var item in e.NewItems) item.PropertyChanged += OnGlossaryTermPropertyChanged;
         foreach (var item in e.OldItems) item.PropertyChanged -= OnGlossaryTermPropertyChanged;
+        if (IsUpdating) return;
         SaveGlossaryTerms();
     }
 
     private void SaveGlossaryTerms()
     {
-        _settings.GlossaryTerms = [.. _glossaryTerms];
-        _context.SaveSettingStorage<Settings>();
+        if (SelectedGlossary == null) return;
+        SelectedGlossary.Terms = [.. _glossaryTerms];
+        SaveGlossaries();
+    }
+
+    partial void OnSelectedGlossaryChanged(Glossary? value)
+    {
+        using var guard = new UpdateGuard(this);
+        foreach (var item in _glossaryTerms)
+            item.PropertyChanged -= OnGlossaryTermPropertyChanged;
+        _glossaryTerms.Clear();
+        if (value != null)
+        {
+            _glossaryTerms.AddRange(value.Terms ?? []);
+        }
     }
 
     private void SaveGlossaries()
@@ -166,7 +180,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void AddModel(string model)
     {
-        if (_isUpdating || string.IsNullOrWhiteSpace(model) || Models.Contains(model))
+        if (IsUpdating || string.IsNullOrWhiteSpace(model) || Models.Contains(model))
             return;
 
         using var _ = new UpdateGuard(this);
@@ -178,7 +192,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void DeleteModel(string model)
     {
-        if (_isUpdating || !Models.Contains(model))
+        if (IsUpdating || !Models.Contains(model))
             return;
 
         using var _ = new UpdateGuard(this);
@@ -223,12 +237,21 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void GlossaryAdd() => _glossaryItems.Add(new Glossary { Name = "新术语库", Source = "zh", Target = "en" });
+    private void GlossaryAdd()
+    {
+        var glossary = new Glossary { Name = "新术语库", Source = "zh", Target = "en" };
+        _glossaryItems.Add(glossary);
+        SelectedGlossary = glossary;
+    }
 
     [RelayCommand]
     private void GlossaryDelete(IList list)
     {
-        foreach (var item in list.Cast<Glossary>().ToList()) _glossaryItems.Remove(item);
+        var deleted = list.Cast<Glossary>().ToList();
+        foreach (var item in deleted) _glossaryItems.Remove(item);
+        if (deleted.Contains(SelectedGlossary))
+            SelectedGlossary = _glossaryItems.FirstOrDefault();
+        SaveGlossaries();
     }
 
     [RelayCommand]
@@ -274,7 +297,11 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void GlossaryTermAdd() => _glossaryTerms.Add(new Term());
+    private void GlossaryTermAdd()
+    {
+        if (SelectedGlossary == null) { GlossarySaveStatus = "请先添加或选择一个术语库。"; return; }
+        _glossaryTerms.Add(new Term());
+    }
 
     [RelayCommand]
     private void GlossaryTermDelete(IList list)
@@ -285,7 +312,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void GlossaryTermsExport()
     {
-        var dialog = new SaveFileDialog { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*", FileName = "hymt_glossary_terms.json", DefaultExt = "json" };
+        if (SelectedGlossary == null) { GlossarySaveStatus = "请先选择一个术语库。"; return; }
+        var dialog = new SaveFileDialog { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*", FileName = $"{SelectedGlossary.Name}_terms.json", DefaultExt = "json" };
         if (dialog.ShowDialog() == true) File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_glossaryTerms, options), Encoding.UTF8);
     }
 
@@ -293,6 +321,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     private void GlossaryTermsImport()
     {
         var dialog = new OpenFileDialog { Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*", Multiselect = false };
+        if (SelectedGlossary == null) { GlossarySaveStatus = "请先选择一个术语库。"; return; }
         if (dialog.ShowDialog() != true) return;
         var imported = JsonSerializer.Deserialize<IEnumerable<Term>>(File.ReadAllText(dialog.FileName, Encoding.UTF8));
         if (imported == null) return;
@@ -310,37 +339,34 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
                 GlossarySaveStatus = "请先填写腾讯云 SecretId 和 SecretKey。";
                 return;
             }
-            var glossaries = _glossaryItems.Where(g => g.IsEnabled).ToList();
-            if (glossaries.Count == 0)
+            var glossary = SelectedGlossary;
+            if (glossary == null)
             {
-                GlossarySaveStatus = "请至少添加并启用一个术语库。";
+                GlossarySaveStatus = "请先选择一个术语库。";
                 return;
             }
-            GlossarySaveStatus = "正在保存术语库...";
+            GlossarySaveStatus = $"正在保存“{glossary.Name}”...";
             var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
-            foreach (var glossary in glossaries)
+            if (string.IsNullOrWhiteSpace(glossary.Name)) throw new InvalidOperationException("术语库名称不能为空。");
+            if (string.IsNullOrWhiteSpace(glossary.Id))
             {
-                if (string.IsNullOrWhiteSpace(glossary.Name)) throw new InvalidOperationException("术语库名称不能为空。");
-                if (string.IsNullOrWhiteSpace(glossary.Id))
+                var created = await Throttled(() => OpenApiRequest("CreateGlossary", new
                 {
-                    var created = await Throttled(() => OpenApiRequest("CreateGlossary", new
-                    {
-                        Name = glossary.Name,
-                        Source = string.IsNullOrWhiteSpace(glossary.Source) ? "zh" : glossary.Source,
-                        Target = string.IsNullOrWhiteSpace(glossary.Target) ? "en" : glossary.Target,
-                        Description = "Created by STranslate HY-MT plugin"
-                    }));
-                    glossary.Id = created?["Response"]?["GlossaryId"]?.ToString() ?? throw new InvalidOperationException("创建术语库后未收到 GlossaryId。");
-                }
-                var existingResponse = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
-                var existing = existingResponse?["Response"]?["Entries"]?.AsArray().Select(x => x?["EntryId"]?.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
-                foreach (var batch in existing.Chunk(100))
-                    await Throttled(() => OpenApiRequest("DeleteGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(EntryId => new { EntryId }) }));
-                foreach (var batch in terms.Chunk(100))
-                    await Throttled(() => OpenApiRequest("CreateGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(t => new { SourceTerm = t.SourceText, TargetTerm = t.TargetText }) }));
+                    Name = glossary.Name,
+                    Source = string.IsNullOrWhiteSpace(glossary.Source) ? "zh" : glossary.Source,
+                    Target = string.IsNullOrWhiteSpace(glossary.Target) ? "en" : glossary.Target,
+                    Description = "Created by STranslate HY-MT plugin"
+                }));
+                glossary.Id = created?["Response"]?["GlossaryId"]?.ToString() ?? throw new InvalidOperationException("创建术语库后未收到 GlossaryId。");
             }
+            var existing = await DescribeAllGlossaryEntries(glossary.Id);
+            foreach (var batch in existing.Select(t => t.EntryId).Where(id => !string.IsNullOrWhiteSpace(id)).Chunk(100))
+                await Throttled(() => OpenApiRequest("DeleteGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(EntryId => new { EntryId }) }));
+            foreach (var batch in terms.Chunk(100))
+                await Throttled(() => OpenApiRequest("CreateGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(t => new { SourceTerm = t.SourceText, TargetTerm = t.TargetText }) }));
+            glossary.Terms = [.. terms];
             SaveGlossaries();
-            GlossarySaveStatus = $"保存成功：已同步 {glossaries.Count} 个术语库、{terms.Count} 条术语。";
+            GlossarySaveStatus = $"保存成功：“{glossary.Name}”已同步 {terms.Count} 条术语。";
         }
         catch (Exception ex)
         {
@@ -360,26 +386,35 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
                 return;
             }
             GlossarySaveStatus = "正在刷新云端术语库...";
-            var response = await OpenApiRequest("DescribeGlossaries", new { Limit = 100, Offset = 0 });
-            var remoteItems = response?["Response"]?["Items"]?.AsArray() ?? [];
-            var enabledIds = _glossaryItems.Where(g => g.IsEnabled).Select(g => g.Id).ToHashSet(StringComparer.Ordinal);
-            using var guard = new UpdateGuard(this);
-            _glossaryItems.Clear();
-            foreach (var item in remoteItems)
+            var remoteItems = await DescribeAllGlossaries();
+            var previous = _glossaryItems
+                .Where(g => !string.IsNullOrWhiteSpace(g.Id))
+                .GroupBy(g => g.Id, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            var selectedId = SelectedGlossary?.Id;
+            using (var guard = new UpdateGuard(this))
             {
-                var id = item?["GlossaryId"]?.ToString() ?? string.Empty;
-                _glossaryItems.Add(new Glossary
+                _glossaryItems.Clear();
+            foreach (var item in remoteItems)
                 {
-                    Id = id,
-                    Name = item?["Name"]?.ToString() ?? id,
-                    Source = item?["Source"]?.ToString() ?? "zh",
-                    Target = item?["Target"]?.ToString() ?? "en",
-                    IsEnabled = enabledIds.Count == 0 || enabledIds.Contains(id)
-                });
+                    var id = item?["GlossaryId"]?.ToString() ?? string.Empty;
+                    previous.TryGetValue(id, out var oldGlossary);
+                    _glossaryItems.Add(new Glossary
+                    {
+                        Id = id,
+                        Name = item?["Name"]?.ToString() ?? id,
+                        Source = item?["Source"]?.ToString() ?? "zh",
+                        Target = item?["Target"]?.ToString() ?? "en",
+                        IsEnabled = oldGlossary?.IsEnabled ?? true,
+                        Terms = oldGlossary?.Terms ?? []
+                    });
+                }
+                SelectedGlossary = _glossaryItems.FirstOrDefault(g => g.Id == selectedId) ?? _glossaryItems.FirstOrDefault();
             }
-            SelectedGlossary = _glossaryItems.FirstOrDefault();
             SaveGlossaries();
             GlossarySaveStatus = $"刷新成功：云端共有 {_glossaryItems.Count} 个术语库。";
+            if (SelectedGlossary != null)
+                await RefreshGlossaryTermsFromBackend();
         }
         catch (Exception ex)
         {
@@ -388,23 +423,41 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task<List<JsonNode?>> DescribeAllGlossaries()
+    {
+        const int limit = 100;
+        var offset = 0;
+        var results = new List<JsonNode?>();
+        while (true)
+        {
+            var response = await Throttled(() => OpenApiRequest("DescribeGlossaries", new { Limit = limit, Offset = offset }));
+            var items = response?["Response"]?["Items"]?.AsArray() ?? [];
+            results.AddRange(items);
+            var totalText = response?["Response"]?["TotalCount"]?.ToString();
+            var total = int.TryParse(totalText, out var parsedTotal) ? parsedTotal : 0;
+            if (items.Count == 0 || items.Count < limit || (total > 0 && results.Count >= total))
+                break;
+            offset += items.Count;
+        }
+        return results;
+    }
+
     [RelayCommand]
     private async Task RefreshGlossaryTermsFromBackend()
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(SelectedGlossary?.Id))
+            var glossary = SelectedGlossary;
+            if (glossary == null || string.IsNullOrWhiteSpace(glossary.Id))
             {
                 GlossarySaveStatus = "请先在列表中选择一个术语库。";
                 return;
             }
-            GlossarySaveStatus = "正在刷新术语库内容...";
-            var response = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = SelectedGlossary.Id, Page = 1, PageSize = 10000 });
-            var remoteTerms = response?["Response"]?["Entries"]?.AsArray() ?? [];
+            GlossarySaveStatus = $"正在刷新“{glossary.Name}”的术语...";
+            var remoteTerms = await DescribeAllGlossaryEntries(glossary.Id);
             using var guard = new UpdateGuard(this);
             _glossaryTerms.Clear();
-            foreach (var item in remoteTerms)
-                _glossaryTerms.Add(new Term { SourceText = item?["SourceTerm"]?.ToString() ?? string.Empty, TargetText = item?["TargetTerm"]?.ToString() ?? string.Empty });
+            _glossaryTerms.AddRange(remoteTerms);
             SaveGlossaryTerms();
             GlossarySaveStatus = $"刷新成功：已载入 {_glossaryTerms.Count} 条术语。";
         }
@@ -413,6 +466,38 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             Debug.WriteLine($"Failed to refresh glossary terms: {ex}");
             GlossarySaveStatus = $"刷新失败：{ex.Message}";
         }
+    }
+
+    private async Task<List<Term>> DescribeAllGlossaryEntries(string glossaryId)
+    {
+        const int pageSize = 200;
+        var page = 1;
+        var results = new List<Term>();
+        while (true)
+        {
+            var response = await Throttled(() => OpenApiRequest("DescribeGlossaryEntries", new
+            {
+                GlossaryId = glossaryId,
+                Page = page,
+                PageSize = pageSize
+            }));
+            var entries = response?["Response"]?["Entries"]?.AsArray() ?? [];
+            foreach (var item in entries)
+            {
+                results.Add(new Term
+                {
+                    EntryId = item?["EntryId"]?.ToString() ?? string.Empty,
+                    SourceText = item?["SourceTerm"]?.ToString() ?? string.Empty,
+                    TargetText = item?["TargetTerm"]?.ToString() ?? string.Empty
+                });
+            }
+            var totalText = response?["Response"]?["Total"]?.ToString();
+            var total = int.TryParse(totalText, out var parsedTotal) ? parsedTotal : 0;
+            if (entries.Count == 0 || entries.Count < pageSize || (total > 0 && results.Count >= total))
+                break;
+            page++;
+        }
+        return results;
     }
 
     private async Task<JsonNode?> OpenApiRequest(string action, object body)
@@ -457,14 +542,14 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     {
         await GlossaryRateLimiter.WaitAsync();
         try { return await action(); }
-        finally { _ = Task.Delay(50).ContinueWith(_ => GlossaryRateLimiter.Release()); }
+        finally { await Task.Delay(50); GlossaryRateLimiter.Release(); }
     }
 
     private static async Task Throttled(Func<Task> action)
     {
         await GlossaryRateLimiter.WaitAsync();
         try { await action(); }
-        finally { _ = Task.Delay(50).ContinueWith(_ => GlossaryRateLimiter.Release()); }
+        finally { await Task.Delay(50); GlossaryRateLimiter.Release(); }
     }
 
     [RelayCommand]
@@ -553,10 +638,10 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         public UpdateGuard(SettingsViewModel viewModel)
         {
             _viewModel = viewModel;
-            _viewModel._isUpdating = true;
+            _viewModel._updateDepth++;
         }
 
-        public void Dispose() => _viewModel._isUpdating = false;
+        public void Dispose() => _viewModel._updateDepth--;
     }
 
     [ObservableProperty] public partial string ApiKey { get; set; }

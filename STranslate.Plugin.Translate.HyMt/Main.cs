@@ -101,9 +101,15 @@ public class Main : TranslatePluginBase
         };
 
         var glossaryIds = Settings.IsEnableGlossary
-            ? (Settings.Glossaries.Count > 0
-                ? Settings.Glossaries.Where(g => g.IsEnabled).Select(g => g.Id)
-                : Settings.GlossaryIds.Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Where(id => !string.IsNullOrWhiteSpace(id)).Take(10).ToArray()
+            ? Settings.Glossaries
+                .Where(g => g.IsEnabled)
+                .Select(g => g.Id)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Concat(Settings.GlossaryIds.Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .Take(10)
+                .ToArray()
             : [];
         object content;
         string url;
@@ -112,7 +118,10 @@ public class Main : TranslatePluginBase
             url = TranslationUrl;
             var referenceTerms = Enumerable.Empty<Term>();
             if (Settings.IsEnableTerms) referenceTerms = referenceTerms.Concat(Settings.Terms);
-            referenceTerms = referenceTerms.Concat(Settings.GlossaryTerms);
+            referenceTerms = referenceTerms.Concat(
+                Settings.Glossaries
+                    .Where(g => g.IsEnabled)
+                    .SelectMany(g => g.Terms));
             object[] localTerms = referenceTerms
                 .Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText))
                 .Select(t => (object)new { source = t.SourceText, target = t.TargetText })
