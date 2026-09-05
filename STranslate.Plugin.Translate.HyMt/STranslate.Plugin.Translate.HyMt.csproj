@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <RepositoryUrl>https://github.com/fxzou/STranslate.Plugin.Translate.HyMt</RepositoryUrl>
-        <Version>1.14.0</Version>
+        <Version>1.12.0</Version>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
@@ -55,11 +55,13 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="ObservableCollections" Version="3.3.4" />
-        <PackageReference Include="STranslate.Plugin" Version="1.0.3" />
+        <PackageReference Include="ObservableCollections" Version="3.3.4">
+            <Private>false</Private>
+        </PackageReference>
+        <PackageReference Include="STranslate.Plugin" Version="1.0.3">
+            <Private>false</Private>
+        </PackageReference>
         <PackageReference Include="TencentCloudSDK.Tokenhub" Version="3.0.1500" />
     </ItemGroup>
 
 </Project>
-
-

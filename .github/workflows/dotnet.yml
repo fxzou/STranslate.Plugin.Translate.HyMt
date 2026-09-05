@@ -60,6 +60,8 @@ jobs:
           $deps = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "TencentCloudTokenhub.dll" -ErrorAction SilentlyContinue
           if (-not $deps) { throw "TencentCloudTokenhub.dll was not included in the build/package output." }
           Write-Host "Tokenhub dependency: $($deps.FullName)"
+          $hostDll = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "STranslate.Plugin.dll" -ErrorAction SilentlyContinue
+          if ($hostDll) { throw "STranslate.Plugin.dll must not be bundled in the plugin package: $($hostDll.FullName)" }
 
       - name: Upload CI artifact
         uses: actions/upload-artifact@v4
