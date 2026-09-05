@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
         <RepositoryUrl>https://github.com/fxzou/STranslate.Plugin.Translate.HyMt</RepositoryUrl>
-        <Version>1.18.0</Version>
+        <Version>1.17.0</Version>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
@@ -63,8 +63,17 @@
         </PackageReference>
     </ItemGroup>
 
+    <!-- STranslate.Plugin is supplied by the host. Remove it before the generic
+         pack target copies the whole output directory, otherwise IPlugin type
+         identity is duplicated and the plugin cannot be discovered. -->
+    <Target Name="RemoveHostAssembliesBeforePackage" BeforeTargets="PackageAsSpkg">
+        <ItemGroup>
+            <HostAssemblies Include="$(OutputPath)STranslate.Plugin.dll" />
+            <HostAssemblies Include="$(OutputPath)ObservableCollections.dll" />
+        </ItemGroup>
+        <Delete Files="@(HostAssemblies)" />
+    </Target>
+
 </Project>
-
-
 
 
