@@ -9,6 +9,8 @@ on:
   push:
     branches:
       - "**"
+    tags:
+      - "*"
   workflow_dispatch:
   release:
     types: [published]
@@ -27,6 +29,25 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Bump plugin version
+        if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $plugin = ".\STranslate.Plugin.Translate.HyMt\plugin.json"
+          $project = ".\STranslate.Plugin.Translate.HyMt\STranslate.Plugin.Translate.HyMt.csproj"
+          $data = Get-Content $plugin -Raw | ConvertFrom-Json
+          $old = [decimal]$data.Version
+          $new = ($old + 0.01).ToString("0.00", [Globalization.CultureInfo]::InvariantCulture)
+          $data.Version = $new
+          $data | ConvertTo-Json -Depth 10 | Set-Content $plugin -Encoding utf8
+          (Get-Content $project -Raw) -replace '<Version>[^<]+</Version>', "<Version>$new</Version>" | Set-Content $project -Encoding utf8
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $plugin $project
+          git commit -m "chore: bump plugin version to $new [skip ci]"
+          git push
+          "PLUGIN_VERSION=$new" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build
         env:
           REPO_NAME: ${{ github.event.repository.name }}
@@ -38,7 +59,7 @@ jobs:
       - name: Upload CI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: STranslate.Plugin.Translate.HyMt-${{ github.sha }}
+          name: STranslate.Plugin.Translate.HyMt-${{ env.PLUGIN_VERSION || github.sha }}
           path: ./.artifacts/plugins/*.spkg
           if-no-files-found: error
           retention-days: 30
