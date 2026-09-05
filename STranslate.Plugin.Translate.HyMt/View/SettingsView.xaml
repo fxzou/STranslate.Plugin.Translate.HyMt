@@ -93,64 +93,59 @@
             <ui:SettingsExpander.HeaderIcon><ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Pair_20_Regular}" /></ui:SettingsExpander.HeaderIcon>
             <ui:ToggleSwitch IsOn="{Binding IsEnableGlossary}" OffContent="{DynamicResource Off}" OnContent="{DynamicResource On}" />
             <ui:SettingsExpander.Items>
-                <ui:SettingsCard Header="HY-MT 云端术语库" IsEnabled="{Binding IsEnableGlossary}">
-                    <Grid Height="440">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="280" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid Grid.Column="0">
+                <ui:SettingsCard Header="术语库" IsEnabled="{Binding IsEnableGlossary}">
+                    <Grid Height="520">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="150" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <WrapPanel Margin="0,0,0,6">
+                            <Button Command="{Binding RefreshGlossariesFromBackendCommand}" Content="刷新" />
+                            <Button Command="{Binding GlossaryAddCommand}" Content="新建" Style="{DynamicResource AccentButtonStyle}" />
+                            <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除" />
+                        </WrapPanel>
+                        <DataGrid Grid.Row="1" x:Name="PART_GlossaryGrid" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single" ItemsSource="{Binding Glossaries}" SelectedItem="{Binding SelectedGlossary, Mode=TwoWay}">
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="启用" Width="42" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="名称" Width="*" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="源" Width="48" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Header="目标" Width="48" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Grid Grid.Row="2" Margin="0,8,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="72" />
+                                <ColumnDefinition Width="72" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Margin="0,0,6,0" Text="{Binding SelectedGlossary.Name, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="名称" />
+                            <TextBox Grid.Column="1" Margin="0,0,6,0" Text="{Binding SelectedGlossary.Source, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="源" />
+                            <TextBox Grid.Column="2" Text="{Binding SelectedGlossary.Target, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="目标" />
+                        </Grid>
+                        <Grid Grid.Row="3">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <WrapPanel Margin="0,0,0,8">
-                                <Button Command="{Binding RefreshGlossariesFromBackendCommand}" Content="刷新云端" />
-                                <Button Command="{Binding GlossaryAddCommand}" Content="新建术语库" Style="{DynamicResource AccentButtonStyle}" />
-                                <Button Command="{Binding GlossaryDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryGrid, Path=SelectedItems}" Content="删除本地项" />
+                            <WrapPanel Margin="0,0,0,6">
+                                <Button Command="{Binding GlossaryTermsImportCommand}" Content="导入" />
+                                <Button Command="{Binding GlossaryTermsExportCommand}" Content="导出" />
+                                <Button Command="{Binding RefreshGlossaryTermsFromBackendCommand}" Content="刷新内容" />
+                                <Button Command="{Binding GlossaryTermAddCommand}" Content="添加" Style="{DynamicResource AccentButtonStyle}" />
+                                <Button Command="{Binding GlossaryTermDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryTermsGrid, Path=SelectedItems}" Content="删除" />
+                                <Button Command="{Binding SaveGlossariesToBackendCommand}" Content="保存" Style="{DynamicResource AccentButtonStyle}" />
                             </WrapPanel>
-                            <DataGrid Grid.Row="1" x:Name="PART_GlossaryGrid" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single" ItemsSource="{Binding Glossaries}" SelectedItem="{Binding SelectedGlossary, Mode=TwoWay}">
+                            <DataGrid Grid.Row="1" x:Name="PART_GlossaryTermsGrid" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Extended" ItemsSource="{Binding GlossaryTerms}">
                                 <DataGrid.Columns>
-                                    <DataGridCheckBoxColumn Header="启用" Width="42" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" />
-                                    <DataGridTextColumn Header="名称" Width="*" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
-                                    <DataGridTextColumn Header="语言" Width="90" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" />
+                                    <DataGridTextColumn Header="原文" Width="*" Binding="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" />
+                                    <DataGridTextColumn Header="译文" Width="*" Binding="{Binding TargetText, UpdateSourceTrigger=PropertyChanged}" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
-                        <Grid Grid.Column="2">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="100" />
-                                    <ColumnDefinition Width="100" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Margin="0,0,8,0" Text="{Binding SelectedGlossary.Name, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="术语库名称" />
-                                <TextBox Grid.Column="1" Margin="0,0,8,0" Text="{Binding SelectedGlossary.Source, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="源语言" />
-                                <TextBox Grid.Column="2" Text="{Binding SelectedGlossary.Target, UpdateSourceTrigger=PropertyChanged}" ui:ControlHelper.PlaceholderText="目标语言" />
-                            </Grid>
-                            <WrapPanel Grid.Row="1" Margin="0,0,0,8">
-                                <Button Command="{Binding GlossaryTermsImportCommand}" Content="导入条目" />
-                                <Button Command="{Binding GlossaryTermsExportCommand}" Content="导出条目" />
-                                <Button Command="{Binding RefreshGlossaryTermsFromBackendCommand}" Content="刷新条目" />
-                                <Button Command="{Binding GlossaryTermAddCommand}" Content="添加条目" Style="{DynamicResource AccentButtonStyle}" />
-                                <Button Command="{Binding GlossaryTermDeleteCommand}" CommandParameter="{Binding ElementName=PART_GlossaryTermsGrid, Path=SelectedItems}" Content="删除选中" />
-                                <Button Command="{Binding SaveGlossariesToBackendCommand}" Content="保存当前术语库" Style="{DynamicResource AccentButtonStyle}" />
-                            </WrapPanel>
-                            <DataGrid Grid.Row="2" x:Name="PART_GlossaryTermsGrid" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Extended" ItemsSource="{Binding GlossaryTerms}">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="原始术语" Width="*" Binding="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" />
-                                    <DataGridTextColumn Header="目标术语" Width="*" Binding="{Binding TargetText, UpdateSourceTrigger=PropertyChanged}" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <TextBlock Grid.Row="3" Margin="0,8,0,0" Text="{Binding GlossarySaveStatus}" TextWrapping="Wrap" />
-                        </Grid>
+                        <TextBlock Grid.Row="4" Margin="0,6,0,0" Text="{Binding GlossarySaveStatus}" TextWrapping="Wrap" />
                     </Grid>
                 </ui:SettingsCard>
             </ui:SettingsExpander.Items>

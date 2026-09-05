@@ -116,21 +116,27 @@ public class Main : TranslatePluginBase
         if (glossaryIds.Length > 0)
         {
             url = TranslationUrl;
-            var referenceTerms = Enumerable.Empty<Term>();
-            if (Settings.IsEnableTerms) referenceTerms = referenceTerms.Concat(Settings.Terms);
-            referenceTerms = referenceTerms.Concat(
-                Settings.Glossaries
-                    .Where(g => g.IsEnabled)
-                    .SelectMany(g => g.Terms));
-            object[] localTerms = referenceTerms
-                .Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText))
-                .Select(t => (object)new { source = t.SourceText, target = t.TargetText })
-                .Take(10)
-                .ToArray();
             var contextParts = new List<string>();
             if (Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style)) contextParts.Add($"译文风格：{Settings.Style}");
-            var context = contextParts.Count == 0 ? null : string.Join("\n", contextParts);
-            content = new { model, text = request.Text, source = sourceStr == "auto" ? null : sourceStr, target = targetStr, glossary_ids = glossaryIds, references = localTerms, context };
+            if (Settings.IsEnableTerms)
+            {
+                var localTerms = Settings.Terms
+                    .Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText))
+                    .Take(10)
+                    .Select(t => $"{t.SourceText} -> {t.TargetText}");
+                if (localTerms.Any()) contextParts.Add($"术语约束：\n{string.Join("\n", localTerms)}");
+            }
+
+            var translationBody = new Dictionary<string, object?>
+            {
+                ["model"] = model,
+                ["text"] = request.Text,
+                ["source"] = sourceStr == "auto" ? null : sourceStr,
+                ["target"] = targetStr,
+                ["glossary_ids"] = glossaryIds
+            };
+            if (contextParts.Count > 0) translationBody["context"] = string.Join("\n", contextParts);
+            content = translationBody;
         }
         else
         {
