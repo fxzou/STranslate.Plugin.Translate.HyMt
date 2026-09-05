@@ -57,10 +57,18 @@ jobs:
         run: |
           Write-Host "Repo name from github.event.repository.name: $env:REPO_NAME"
           dotnet build ".\$env:REPO_NAME\$env:REPO_NAME.csproj" --configuration Release --no-incremental --force
-          $sdkDll = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "TencentCloudTokenhub.dll" -ErrorAction SilentlyContinue
-          if ($sdkDll) { throw "TencentCloudTokenhub.dll must not be bundled; the plugin uses the pure HTTP TC3 implementation." }
-          $hostDll = Get-ChildItem -Path ".\.artifacts" -Recurse -Filter "STranslate.Plugin.dll" -ErrorAction SilentlyContinue
-          if ($hostDll) { throw "STranslate.Plugin.dll must not be bundled in the plugin package: $($hostDll.FullName)" }
+          $package = Get-ChildItem -Path ".\.artifacts\plugins" -Filter "*.spkg" | Select-Object -First 1
+          if (-not $package) { throw "No .spkg package was produced." }
+          $inspect = Join-Path $env:RUNNER_TEMP "hymt-package-inspect.zip"
+          Copy-Item $package.FullName $inspect -Force
+          $inspectDir = Join-Path $env:RUNNER_TEMP "hymt-package-inspect"
+          if (Test-Path $inspectDir) { Remove-Item $inspectDir -Recurse -Force }
+          Expand-Archive -Path $inspect -DestinationPath $inspectDir
+          $bundledHost = Get-ChildItem $inspectDir -Recurse -Filter "STranslate.Plugin.dll" -ErrorAction SilentlyContinue
+          if ($bundledHost) { throw "STranslate.Plugin.dll is bundled in the .spkg and would break IPlugin discovery." }
+          $bundledSdk = Get-ChildItem $inspectDir -Recurse -Filter "TencentCloudTokenhub.dll" -ErrorAction SilentlyContinue
+          if ($bundledSdk) { throw "TencentCloudTokenhub.dll is unexpectedly bundled; the plugin uses pure HTTP TC3." }
+          Write-Host "Validated package contents: $($package.Name)"
 
       - name: Upload CI artifact
         uses: actions/upload-artifact@v4
