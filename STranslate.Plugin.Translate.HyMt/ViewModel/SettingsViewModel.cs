@@ -309,7 +309,8 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
             _context.Logger.LogWarning("Cannot save glossary without Tencent Cloud SecretId and SecretKey.");
             return;
         }
-        var client = new TokenhubClient(new Credential(SecretId, SecretKey), Region);
+        var credential = new Credential { SecretId = SecretId, SecretKey = SecretKey };
+        var client = new TokenhubClient(credential, Region);
         var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
         foreach (var glossary in _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)))
         {
