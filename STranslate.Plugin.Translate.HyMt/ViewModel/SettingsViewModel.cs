@@ -1,12 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using ObservableCollections;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -243,7 +243,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            _context.Logger.LogError(ex, $"Failed to export glossaries: {ex.Message}");
+            Debug.WriteLine($"Failed to export glossaries: {ex}");
         }
     }
 
@@ -265,7 +265,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            _context.Logger.LogError(ex, $"Failed to import glossaries: {ex.Message}");
+            Debug.WriteLine($"Failed to import glossaries: {ex}");
         }
     }
 
@@ -299,25 +299,21 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task SaveGlossariesToBackend()
     {
-        if (string.IsNullOrWhiteSpace(SecretId) || string.IsNullOrWhiteSpace(SecretKey))
+        try
         {
-            _context.Logger.LogWarning("Cannot save glossary without Tencent Cloud SecretId and SecretKey.");
-            return;
-        }
-        var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
-        foreach (var glossary in _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)))
-        {
-            var existingResponse = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
-            var existing = existingResponse?["Response"]?["Entries"]?.AsArray().Select(x => x?["EntryId"]?.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
-            foreach (var batch in existing.Chunk(100))
+            if (string.IsNullOrWhiteSpace(SecretId) || string.IsNullOrWhiteSpace(SecretKey)) return;
+            var terms = _glossaryTerms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText) && !string.IsNullOrWhiteSpace(t.TargetText)).ToList();
+            foreach (var glossary in _glossaryItems.Where(g => !string.IsNullOrWhiteSpace(g.Id)))
             {
-                await Throttled(() => OpenApiRequest("DeleteGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(EntryId => new { EntryId }) }));
-            }
-            foreach (var batch in terms.Chunk(100))
-            {
-                await Throttled(() => OpenApiRequest("CreateGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(t => new { SourceTerm = t.SourceText, TargetTerm = t.TargetText }) }));
+                var existingResponse = await OpenApiRequest("DescribeGlossaryEntries", new { GlossaryId = glossary.Id, Page = 1, PageSize = 10000 });
+                var existing = existingResponse?["Response"]?["Entries"]?.AsArray().Select(x => x?["EntryId"]?.ToString()).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? [];
+                foreach (var batch in existing.Chunk(100))
+                    await Throttled(() => OpenApiRequest("DeleteGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(EntryId => new { EntryId }) }));
+                foreach (var batch in terms.Chunk(100))
+                    await Throttled(() => OpenApiRequest("CreateGlossaryEntries", new { GlossaryId = glossary.Id, Entries = batch.Select(t => new { SourceTerm = t.SourceText, TargetTerm = t.TargetText }) }));
             }
         }
+        catch (Exception ex) { Debug.WriteLine($"Failed to save glossaries: {ex}"); }
     }
 
     private async Task<JsonNode?> OpenApiRequest(string action, object body)
@@ -385,7 +381,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            _context.Logger.LogError(ex, $"Failed to export terms: {ex.Message}");
+            Debug.WriteLine($"Failed to export terms: {ex}");
         }
     }
 
@@ -414,7 +410,7 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            _context.Logger.LogError(ex, $"Failed to import terms: {ex.Message}");
+            Debug.WriteLine($"Failed to import terms: {ex}");
         }
     }
 
