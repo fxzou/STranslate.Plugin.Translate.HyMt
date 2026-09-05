@@ -23,8 +23,6 @@ public class Settings
 
     public bool IsEnableTerms { get; set; }
 
-    public bool IsEnableDomains { get; set; }
-
     public bool IsEnableStyle { get; set; }
 
     public string Style { get; set; } = string.Empty;
@@ -44,10 +42,6 @@ public class Settings
     /// </summary>
     public List<Term> Terms { get; set; } = [];
 
-    /// <summary>
-    ///     领域提示
-    /// </summary>
-    public string Domains { get; set; } = string.Empty;
 }
 
 public partial class Term : ObservableObject

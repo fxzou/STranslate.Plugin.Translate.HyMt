@@ -79,25 +79,6 @@
             </ComboBox>
         </ui:SettingsCard>
 
-        <ui:SettingsExpander Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Domains}">
-            <ui:SettingsExpander.HeaderIcon>
-                <ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.TooltipQuote_20_Regular}" />
-            </ui:SettingsExpander.HeaderIcon>
-            <ui:ToggleSwitch
-                IsOn="{Binding IsEnableDomains}"
-                OffContent="{DynamicResource Off}"
-                OnContent="{DynamicResource On}" />
-
-            <ui:SettingsExpander.Items>
-                <ui:SettingsCard Header="{DynamicResource STranslate_Plugin_Translate_HyMt_Domains_Content}" IsEnabled="{Binding IsEnableDomains}">
-                    <TextBox Text="{Binding Domains}" />
-                </ui:SettingsCard>
-                <ui:SettingsCard>
-                    <ui:HyperlinkButton Content="{DynamicResource STranslate_Plugin_Translate_HyMt_Domains_Website}" NavigateUri="https://cloud.tencent.com/document/product/1823/132252#68bea60b03i3z" />
-                </ui:SettingsCard>
-            </ui:SettingsExpander.Items>
-        </ui:SettingsExpander>
-
         <ui:SettingsExpander Header="风格翻译">
             <ui:SettingsExpander.HeaderIcon><ui:FontIcon Icon="{x:Static ui:FluentSystemIcons.Pair_20_Regular}" /></ui:SettingsExpander.HeaderIcon>
             <ui:ToggleSwitch IsOn="{Binding IsEnableStyle}" OffContent="{DynamicResource Off}" OnContent="{DynamicResource On}" />

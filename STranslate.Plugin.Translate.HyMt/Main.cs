@@ -120,7 +120,6 @@ public class Main : TranslatePluginBase
                 .ToArray();
             var contextParts = new List<string>();
             if (Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style)) contextParts.Add($"译文风格：{Settings.Style}");
-            if (Settings.IsEnableDomains && !string.IsNullOrWhiteSpace(Settings.Domains)) contextParts.Add($"翻译领域：{Settings.Domains}");
             var context = contextParts.Count == 0 ? null : string.Join("\n", contextParts);
             content = new { model, text = request.Text, source = sourceStr == "auto" ? null : sourceStr, target = targetStr, glossary_ids = glossaryIds, references = localTerms, context };
         }
@@ -130,7 +129,6 @@ public class Main : TranslatePluginBase
             var prompt = $"请将以下文本翻译为 {targetStr}。注意只需要输出翻译后的结果，不要额外解释：\n";
             if (Settings.IsEnableStyle && !string.IsNullOrWhiteSpace(Settings.Style)) prompt = $"请将以下文本翻译为 {targetStr}。注意翻译的风格要严格符合【{Settings.Style}】\n";
             if (Settings.IsEnableTerms) prompt = string.Join("\n", Settings.Terms.Where(t => !string.IsNullOrWhiteSpace(t.SourceText)).Select(t => $"{t.SourceText} 翻译成 {t.TargetText}")) + "\n" + prompt;
-            if (Settings.IsEnableDomains && !string.IsNullOrWhiteSpace(Settings.Domains)) prompt = $"领域：{Settings.Domains}\n" + prompt;
             content = new { model, messages = new[] { new { role = "user", content = prompt + request.Text } } };
         }
         var response = await Context.HttpService.PostAsync(url, content, options, cancellationToken);

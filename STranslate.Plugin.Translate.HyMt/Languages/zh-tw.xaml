@@ -7,9 +7,6 @@
     <sys:String x:Key="STranslate_Plugin_Translate_HyMt_ApiKey_Placeholder">請輸入 API 金鑰</sys:String>
     <sys:String x:Key="STranslate_Plugin_Translate_HyMt_ApiKey_Description">輸入您的 HyMt API 金鑰</sys:String>
     <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Model">模型</sys:String>
-    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Domains">領域提示</sys:String>
-    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Domains_Content">領域提示語</sys:String>
-    <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Domains_Website">領域提示官方文檔</sys:String>
     <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms">術語表</sys:String>
     <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms_Clear">清除術語表</sys:String>
     <sys:String x:Key="STranslate_Plugin_Translate_HyMt_Terms_Export">匯出術語表</sys:String>

@@ -39,8 +39,6 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
         Model = settings.Model;
         Models = [.. settings.Models];
         IsEnableTerms = settings.IsEnableTerms;
-        IsEnableDomains = settings.IsEnableDomains;
-        Domains = settings.Domains;
         IsEnableStyle = settings.IsEnableStyle;
         Style = settings.Style;
         IsEnableGlossary = settings.IsEnableGlossary;
@@ -150,12 +148,6 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
                 break;
             case nameof(IsEnableTerms):
                 _settings.IsEnableTerms = IsEnableTerms;
-                break;
-            case nameof(IsEnableDomains):
-                _settings.IsEnableDomains = IsEnableDomains;
-                break;
-            case nameof(Domains):
-                _settings.Domains = Domains;
                 break;
             case nameof(IsEnableStyle): _settings.IsEnableStyle = IsEnableStyle; break;
             case nameof(Style): _settings.Style = Style; break;
@@ -476,8 +468,6 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] public partial bool IsEnableTerms { get; set; }
 
-    [ObservableProperty] public partial bool IsEnableDomains { get; set; }
-
     [ObservableProperty] public partial bool IsEnableStyle { get; set; }
 
     [ObservableProperty] public partial string Style { get; set; }
@@ -501,8 +491,4 @@ public partial class SettingsViewModel : ObservableObject, IDisposable
 
     public INotifyCollectionChangedSynchronizedViewList<Term> GlossaryTerms { get; }
 
-    /// <summary>
-    ///     领域提示
-    /// </summary>
-    [ObservableProperty] public partial string Domains { get; set; }
 }
